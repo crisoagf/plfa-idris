@@ -284,25 +284,36 @@ containsCodomain {u = (y `U` z)} f (Left x) = containsCodomain (f . Left) x
 containsCodomain {u = (y `U` z)} f (Right x) = containsCodomain (f . Right) x
 
 factor : (u, u', v, w : Value) -> Type
-factor u u' v w = (u' `Subset` u, domain u' :<=: v, w :<=: codomain u')
+factor u u' v w = (u' `Subset` u, allFuncs u', domain u' :<=: v, w :<=: codomain u')
 
 subInvTrans : {u', u2, u : Value} -> allFuncs u' -> u' `Subset` u -> ({v', w' : Value} -> v' |~> w' `Elem` u -> (u3 : Value ** factor u2 u3 v' w')) -> (u3 : Value ** factor u2 u3 (domain u') (codomain u'))
 subInvTrans {u' = Bot} {u2 = u2} {u = u} f g ih = absurd (notFuncBot (f Refl))
 subInvTrans {u' = (x |~> y)} {u2 = u2} {u = u} f g ih = ih (g Refl)
 subInvTrans {u' = (u1' `U` u2')} {u2 = u2} {u = u} f g ih with (uSubsetInv g)
   subInvTrans {u' = (u1' `U` u2')} {u2 = u2} {u = u} f g ih | (u1cu, u2cu) = case subInvTrans {u' = u1'} {u2} {u} (\ z => f (Left z)) u1cu ih of
-    (u31 ** (u31cu2, du31cdu1', cu1'ccu31)) => case subInvTrans {u' = u2'} {u2} {u} (\ z => f (Right z)) u2cu ih of
-      (u32 ** (u32cu2, du32cdu2', cu1'ccu32)) => (u31 `U` u32 ** (either u31cu2 u32cu2, umono du31cdu1' du32cdu2', umono cu1'ccu31 cu1'ccu32))
+    (u31 ** (u31cu2, fu31, du31cdu1', cu1'ccu31)) => case subInvTrans {u' = u2'} {u2} {u} (\ z => f (Right z)) u2cu ih of
+      (u32 ** (u32cu2, fu32, du32cdu2', cu1'ccu32)) => (u31 `U` u32 ** (either u31cu2 u32cu2, either fu31 fu32, umono du31cdu1' du32cdu2', umono cu1'ccu31 cu1'ccu32))
 
 subInv : {u1, u2 : Value} -> u1 :<=: u2 -> {v, w : Value} -> v |~> w `Elem` u1 -> (u3 : Value ** factor u2 u3 v w)
 subInv {u1 = Bot} {u2 = u2} Absurd {v = v} {w = w} y impossible
 subInv {u1 = u11 `U` u12} {u2 = u2} (Union x z) {v = v} {w = w} (Left y) = subInv x y
 subInv {u1 = u11 `U` u12} {u2 = u2} (Union x z) {v = v} {w = w} (Right y) = subInv z y
 subInv {u1 = u1} {u2 = (u21 `U` u22)} (Inj1 x) {v = v} {w = w} y with (subInv x y)
-  subInv {u1 = u1} {u2 = (u21 `U` u22)} (Inj1 x) {v = v} {w = w} y | (u31 ** (u31cu21, domu31cv, wccodu31))
-    = (u31 ** (\ z => Left (u31cu21 z), domu31cv, wccodu31))
-subInv {u1 = u1} {u2 = (u21 `U` u22)} (Inj2 x) {v = v} {w = w} y = ?subInv_rhs_4
-subInv {u1 = u1} {u2 = u2} (x `Trans` z) {v = v} {w = w} y = ?subInv_rhs_5
-subInv {u1 = (u11 |~> u12)} {u2 = (u21 |~> u22)} (Fun x z) {v = v} {w = w} y = ?subInv_rhs_6
-subInv {u1 = (v1 |~> (w1 `U` w1'))} {u2 = ((v1 |~> w1) `U` (v1 |~> w1'))} Dist {v = v} {w = w} y = ?subInv_rhs_7
+  subInv {u1 = u1} {u2 = (u21 `U` u22)} (Inj1 x) {v = v} {w = w} y | (u31 ** (u31cu21, fu31, domu31cv, wccodu31))
+    = (u31 ** (\ z => Left (u31cu21 z), fu31, domu31cv, wccodu31))
+subInv {u1 = u1} {u2 = (u21 `U` u22)} (Inj2 x) {v = v} {w = w} y with (subInv x y)
+  subInv {u1 = u1} {u2 = (u21 `U` u22)} (Inj2 x) {v = v} {w = w} y | (u32 ** (u32cu22, fu32, domu32cv, wccodu32))
+    = (u32 ** (\ z => Right (u32cu22 z), fu32, domu32cv, wccodu32))
+subInv {u1 = u1} {u2 = u2} (x `Trans` z) {v = v} {w = w} y with (subInv x y)
+  subInv {u1 = u1} {u2 = u2} (x `Trans` z) {v = v} {w = w} y | (u' **  (u'cu1, fu', domu'cv, wccodu')) with (subInvTrans fu' u'cu1 (subInv z))
+    subInv {u1 = u1} {u2 = u2} (x `Trans` z) {v = v} {w = w} y | (u' **  (u'cu1, fu', domu'cv, wccodu')) | (u3 ** (u3cu2, fu3, domu3cdomu', codu'ccodu3))
+      = (u3 ** (u3cu2, fu3, domu3cdomu' `Trans` domu'cv, wccodu' `Trans` codu'ccodu3))
+subInv {u1 = (u11 |~> u12)} {u2 = (u21 |~> u22)} (Fun x z) {v = u11} {w = u12} Refl = (u21 |~> u22 ** (id, \ Refl => MkFunc, x, z))
+subInv {u1 = (v1 |~> (w1 `U` w1'))} {u2 = ((v1 |~> w1) `U` (v1 |~> w1'))} Dist {v = v} {w = w} y with (y)
+  subInv {u1 = (v1 |~> (w1 `U` w1'))} {u2 = ((v1 |~> w1) `U` (v1 |~> w1'))} Dist {v = v1} {w = (w1 `U` w1')} y | Refl
+    = ((v1 |~> w1 `U` v1 |~> w1') ** (id, triviality, Union reflI reflI, reflI))
+  where
+    triviality : Either (u = v1 |~> w1) (u = v1 |~> w1') -> Func u
+    triviality (Left Refl) = MkFunc
+    triviality (Right Refl) = MkFunc
 
