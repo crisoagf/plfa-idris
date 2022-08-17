@@ -1,4 +1,4 @@
-module Naturals
+module Book.Part1.Naturals
 
 %default total
 %hide plus

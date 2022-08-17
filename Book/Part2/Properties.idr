@@ -1,7 +1,7 @@
-module Properties
+module Book.Part2.Properties
 import Decidable.Equality
-import Lambda
-import Isomorphism
+import Book.Part2.Lambda
+import Book.Part1.Isomorphism
 %default total
 
 public export
@@ -62,43 +62,43 @@ typed (CanonicalSuc x) = IntroNSuc (typed x)
 
 public export
 data Progress : Term -> Type where
-  step : {n : Term} -> ReduceStep m n -> Progress m
-  done : Value m -> Progress m
+  Step : {n : Term} -> ReduceStep m n -> Progress m
+  Done : Value m -> Progress m
 
 public export
 progress : {m : Term} -> TypeOf Empty m a -> Progress m
 progress (Axiom Z) impossible
 progress (Axiom (S f x)) impossible
-progress (IntroArr _) = done VLam
+progress (IntroArr _) = Done VLam
 progress (ElimArr x y) with (progress x)
-  progress (ElimArr x y) | (step z) = step (IntroAppLeft z)
-  progress (ElimArr x y) | (done z) with (progress y)
-    progress (ElimArr x y) | (done z) | (step w) = step (IntroAppRight z w)
-    progress (ElimArr x y) | (done z) | (done w) with (canonical x z)
-      progress (ElimArr x y) | (done z) | (done w) | (CanonicalLam v) = step (BetaLam w)
-progress IntroNZ = done VZero
+  progress (ElimArr x y) | (Step z) = Step (IntroAppLeft z)
+  progress (ElimArr x y) | (Done z) with (progress y)
+    progress (ElimArr x y) | (Done z) | (Step w) = Step (IntroAppRight z w)
+    progress (ElimArr x y) | (Done z) | (Done w) with (canonical x z)
+      progress (ElimArr x y) | (Done z) | (Done w) | (CanonicalLam v) = Step (BetaLam w)
+progress IntroNZ = Done VZero
 progress (IntroNSuc x) with (progress x)
-  progress (IntroNSuc x) | (step y) = step (IntroSuc y)
-  progress (IntroNSuc x) | (done y) = done (VSuc y)
+  progress (IntroNSuc x) | (Step y) = Step (IntroSuc y)
+  progress (IntroNSuc x) | (Done y) = Done (VSuc y)
 progress (IntroNCase x y z) with (progress x)
-  progress (IntroNCase x y z) | (step w) = step (IntroCase w)
-  progress (IntroNCase x y z) | (done w) with (canonical x w)
-    progress (IntroNCase x y z) | (done w) | CanonicalZero = step BetaZero
-    progress (IntroNCase x y z) | (done w) | (CanonicalSuc v) = step (BetaSuc $ value v)
-progress (IntroMu x) = step BetaMu
+  progress (IntroNCase x y z) | (Step w) = Step (IntroCase w)
+  progress (IntroNCase x y z) | (Done w) with (canonical x w)
+    progress (IntroNCase x y z) | (Done w) | CanonicalZero = Step BetaZero
+    progress (IntroNCase x y z) | (Done w) | (CanonicalSuc v) = Step (BetaSuc $ value v)
+progress (IntroMu x) = Step BetaMu
 
 
 progressToEither : Progress m -> Either (Value m) (n : Term ** ReduceStep m n)
-progressToEither (step {n} x) = Right (MkDPair n x)
-progressToEither (done x) = Left x
+progressToEither (Step {n} x) = Right (MkDPair n x)
+progressToEither (Done x) = Left x
 
 eitherToProgress : Either (Value m) (DPair Term (\ n => ReduceStep m n)) -> Progress m
-eitherToProgress (Left x) = done x
-eitherToProgress (Right (MkDPair _ x)) = step x
+eitherToProgress (Left x) = Done x
+eitherToProgress (Right (MkDPair _ x)) = Step x
 
 fromToProgress : (x : Progress m) -> eitherToProgress (progressToEither x) = x
-fromToProgress (step x) = Refl
-fromToProgress (done x) = Refl
+fromToProgress (Step x) = Refl
+fromToProgress (Done x) = Refl
 
 toFromProgress : (y : Either (Value m) (n : Term ** ReduceStep m n)) -> progressToEither (eitherToProgress y) = y
 toFromProgress (Left x) = Refl
@@ -130,8 +130,8 @@ progress' (IntroMu x) = Right (MkDPair _ BetaMu)
 
 decValue : {m : Term} -> TypeOf Empty m a -> Dec (Value m)
 decValue x with (progress x)
-  decValue x | (step y) = No (reduceNotValue y)
-  decValue x | (done y) = Yes y
+  decValue x | (Step y) = No (reduceNotValue y)
+  decValue x | (Done y) = Yes y
 
 
 ext
@@ -202,18 +202,22 @@ subst {m = (Mu x' middle)} {x} y (IntroMu z) with (decEq x' x)
   subst {m = (Mu x' middle)} {x = x'} y (IntroMu z) | (Yes Refl) = IntroMu (drop z)
   subst {m = (Mu x' middle)} {x = x} y (IntroMu z) | (No contra) = IntroMu (subst y (swap contra z))
 
+-- The order of the clauses matters, the with clauses are necessary, and there's probably a bunch of issues in idris2 to be reported here
 public export
 preserve : {m, n : Term} -> TypeOf Empty m a -> ReduceStep m n -> TypeOf Empty n a
+preserve (IntroNCase x' z w) (BetaSuc y) with (x')
+  preserve (IntroNCase x' z w) (BetaSuc y) | (IntroNSuc x) = subst x w
 preserve (ElimArr x z) (IntroAppLeft y) = ElimArr (preserve x y) z
 preserve (ElimArr x w) (IntroAppRight y z) = ElimArr x (preserve w z)
+preserve (ElimArr x' z) (BetaLam y) with (x')
+  preserve (ElimArr x' z) (BetaLam y) | (IntroArr x) = subst z x
 preserve (IntroNSuc x) (IntroSuc y) = IntroNSuc (preserve x y)
+preserve (IntroNSuc x) (BetaLam _) impossible
+preserve (IntroNSuc x) (BetaSuc _) impossible
 preserve (IntroNCase x z w) (IntroCase y) = IntroNCase (preserve x y) z w
-preserve (ElimArr (IntroArr x) z) (BetaLam y) = subst z x
 preserve (IntroNCase x y z) BetaZero = y
-preserve (IntroNCase (IntroNSuc x) z w) (BetaSuc y) = subst x w
-preserve (Axiom x) BetaMu impossible
-preserve (IntroArr x) BetaMu impossible
-preserve (ElimArr x y) BetaMu impossible
-preserve IntroNZ BetaMu impossible
-preserve (IntroNSuc x) BetaMu impossible
-preserve (IntroNCase x y z) BetaMu impossible
+preserve (IntroNCase x y z) (BetaLam _) impossible
+preserve (Axiom x) y impossible
+preserve (IntroArr x) y impossible
+preserve IntroNZ y impossible
+preserve (IntroMu x) y = ?h2

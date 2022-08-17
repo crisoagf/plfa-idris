@@ -1,6 +1,6 @@
-module Decidable
+module Book.Part1.Decidable
 import Data.Nat
-import Isomorphism
+import Book.Part1.Isomorphism
 
 IsTrue : Bool -> Type
 IsTrue True = ()

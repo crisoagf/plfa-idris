@@ -1,6 +1,6 @@
-module Connectives
-import Isomorphism
-import Decidable.Order
+module Book.Part1.Connectives
+import Book.Part1.Isomorphism
+import Control.Order
 import Syntax.PreorderReasoning.Generic
 
 %default total

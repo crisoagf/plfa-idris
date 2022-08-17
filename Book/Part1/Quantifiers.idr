@@ -1,26 +1,27 @@
-module Quantifiers
-import Isomorphism
-import Relations
+module Book.Part1.Quantifiers
+import Book.Part1.Isomorphism
+import Book.Part1.Relations
 import Data.Nat
-import Naturals
-import Induction
+import Book.Part1.Naturals
+import Book.Part1.Induction
+-- import Control.Function.FunExt
 
 public export
-Extensionality : Type
-Extensionality = {a : Type} -> {b : a -> Type} -> {f, g : (x : a) -> b x} -> ((x : a) -> (f x = g x)) -> f = g
+interface FunExt where
+  funExt : {0 b : a -> Type} -> {0 f, g : (x : a) -> b x} -> ((x : a) -> f x = g x) -> f = g
 
 etaTimes : (w : (a, b)) -> (fst w, snd w) = w
 etaTimes (_, _) = Refl
 
-forallDistribTimes : {a : Type} -> Extensionality -> {b, c : a -> Type} -> Iso ((x : a) -> (b x, c x)) ((x : a) -> b x, (x : a) -> c x)
-forallDistribTimes ext = MkIso fpToPf pfToFp fpId pfId
+forallDistribTimes : FunExt => {a : Type} -> {b, c : a -> Type} -> Iso ((x : a) -> (b x, c x)) ((x : a) -> b x, (x : a) -> c x)
+forallDistribTimes = MkIso fpToPf pfToFp fpId pfId
   where
     fpToPf : {0 b, c : a -> Type} -> ((x : a) -> (b x, c x)) -> ((x : a) -> b x, (x : a) -> c x)
     fpToPf f = (\ x => fst (f x), \ x => snd (f x))
     pfToFp : {0 b, c : a -> Type} -> ((x : a) -> b x, (x : a) -> c x) -> (x : a) -> (b x, c x)
     pfToFp (y, z) x = (y x, z x)
     fpId : (f : ((x : a) -> (b x, c x))) -> pfToFp (\x => fst (f x), \x => snd (f x)) = f
-    fpId f = ext (\ x => etaTimes (f x))
+    fpId f = funExt (\ x => etaTimes (f x))
     pfId : (y : ((x : a) -> b x, (x : a) -> c x)) -> (\x => fst (pfToFp y x), \x => snd (pfToFp y x)) = y
     pfId (z, y) = the ((\x => z x, \x => y x) = (z, y)) Refl
 
@@ -34,17 +35,17 @@ data Sigma : (0 a : Type) -> (0 b : a -> Type) -> Type where
 sigmaElim : ((x : a) -> b x -> c) -> Sigma a b -> c
 sigmaElim f (MkSigma x y) = f x y
 
-forallSigmaCurrying : {a, c : Type} -> {b : a -> Type} -> Extensionality -> Iso ((x : a) -> b x -> c) (Sigma a b -> c)
-forallSigmaCurrying ext = MkIso sigmaUncurry forallCurry sfId fsId
+forallSigmaCurrying : FunExt => {a, c : Type} -> {b : a -> Type} -> Iso ((x : a) -> b x -> c) (Sigma a b -> c)
+forallSigmaCurrying = MkIso sigmaUncurry forallCurry sfId fsId
   where
     sigmaUncurry : ((x : a) -> b x -> c) -> Sigma a b -> c
     sigmaUncurry = sigmaElim
     forallCurry : (Sigma a b -> c) -> (x : a) -> b x -> c
     forallCurry f x y = f (MkSigma x y)
     sfId : (x : ((x : a) -> b x -> c)) -> forallCurry (sigmaElim x) = x
-    sfId x = ext (\y => ext (\z => Refl))
+    sfId x = funExt (\y => funExt (\z => Refl))
     fsId : (y : (Sigma a b -> c)) -> sigmaElim (forallCurry y) = y
-    fsId y = ext (\ (MkSigma x z) => Refl)
+    fsId y = funExt (\ (MkSigma x z) => Refl)
 
 sigmaDistribEither : Iso (Sigma a (\ x => Either (b x) (c x))) (Either (Sigma a b) (Sigma a c))
 sigmaDistribEither = MkIso sigmaEither eitherSigma seId esId
@@ -103,17 +104,17 @@ existsLTE LTEZero = MkSigma z (plusZeroRightNeutral z)
 existsLTE (LTESucc x) with (existsLTE x)
   existsLTE (LTESucc x) | (MkSigma w v) = MkSigma w (sym (plusSuccRightSucc w _) `trans` cong S v)
 
-notExistsForallNot : {a : Type} -> Extensionality -> {b : a -> Type} -> Iso (Not (Sigma a (\ x => b x))) ((x : a) -> Not (b x))
-notExistsForallNot ext = MkIso generalize specialize gsId sgId
+notExistsForallNot : FunExt => {a : Type} -> {b : a -> Type} -> Iso (Not (Sigma a (\ x => b x))) ((x : a) -> Not (b x))
+notExistsForallNot = MkIso generalize specialize gsId sgId
   where
     generalize : (Sigma a (\x => b x) -> Void) -> (x : a) -> b x -> Void
     generalize f x y = f (MkSigma x y)
     specialize : ((x : a) -> b x -> Void) -> Sigma a (\x => b x) -> Void
     specialize f (MkSigma x y) = f x y
     gsId : (x : (Sigma a (\x => b x) -> Void)) -> specialize (generalize x) = x
-    gsId x = ext (\ (MkSigma x b) => Refl)
+    gsId x = funExt (\ (MkSigma x b) => Refl)
     sgId : (y : ((x : a) -> b x -> Void)) -> generalize (specialize y) = y
-    sgId y = ext (\x => ext (\z => Refl))
+    sgId y = funExt (\x => funExt (\z => Refl))
 
 existsNotToNotForall : {0 b : a -> Type} -> Sigma a (\ x => Not (b x)) -> Not ((x : a) -> b x)
 existsNotToNotForall (MkSigma x y) f = y (f x)
@@ -138,34 +139,34 @@ canonicalOne (OneI (OneO x)) OneEmpty impossible
 canonicalOne (OneI (OneI x)) OneEmpty impossible
 canonicalOne (OneI x) (OneI y) = cong OneI (canonicalOne x y)
 
-canonicalCan : (c, c' : Can b) -> c = c'
-canonicalCan CanZero CanZero = Refl
-canonicalCan CanZero (CanOne (OneO OneEmpty)) impossible
-canonicalCan CanZero (CanOne (OneO (OneO x))) impossible
-canonicalCan CanZero (CanOne (OneO (OneI x))) impossible
-canonicalCan (CanOne (OneO OneEmpty)) CanZero impossible
-canonicalCan (CanOne (OneO (OneO x))) CanZero impossible
-canonicalCan (CanOne (OneO (OneI x))) CanZero impossible
-canonicalCan (CanOne x) (CanOne y) = cong CanOne (canonicalOne x y)
+canonical : (c, c' : Canonical b) -> c = c'
+canonical CanonicalZero CanonicalZero = Refl
+canonical CanonicalZero (CanonicalOne (OneO OneEmpty)) impossible
+canonical CanonicalZero (CanonicalOne (OneO (OneO x))) impossible
+canonical CanonicalZero (CanonicalOne (OneO (OneI x))) impossible
+canonical (CanonicalOne (OneO OneEmpty)) CanonicalZero impossible
+canonical (CanonicalOne (OneO (OneO x))) CanonicalZero impossible
+canonical (CanonicalOne (OneO (OneI x))) CanonicalZero impossible
+canonical (CanonicalOne x) (CanonicalOne y) = cong CanonicalOne (canonicalOne x y)
 
-canonicalCan' : (c : Can b) -> (c' : Can b') -> b = b' -> c = c'
-canonicalCan' x y Refl = canonicalCan x y
+canonical' : (c : Canonical b) -> (c' : Canonical b') -> b = b' -> c = c'
+canonical' x y Refl = canonical x y
 
 congSigma : {x, x' : a} -> {b : a -> Type} -> {y : b x} -> {y' : b x'} -> x = x' -> b x = b x' -> y = y' -> MkSigma {b = b} x y = MkSigma x' y'
 congSigma Refl Refl Refl = Refl
 
-canIso : Iso Nat (Sigma Bin Can)
+canIso : Iso Nat (Sigma Bin Canonical)
 canIso = MkIso to' from' ftId tfId
   where
-    to' : Nat -> Sigma Bin Can
+    to' : Nat -> Sigma Bin Canonical
     to' n = MkSigma (to n) (toCanonical n)
-    from' : Sigma Bin Can -> Nat
+    from' : Sigma Bin Canonical -> Nat
     from' (MkSigma x y) = from x
     ftId : (x : Nat) -> from (to x) = x
     ftId x = fromToId x
-    tfId : (y : Sigma Bin Can) -> MkSigma (to (from' y)) (toCanonical (from' y)) = y
+    tfId : (y : Sigma Bin Canonical) -> MkSigma (to (from' y)) (toCanonical (from' y)) = y
     tfId (MkSigma x y) = congSigma
       (canonicalDef y)
-      (cong Can (canonicalDef y))
-      (canonicalCan' (toCanonical (from x)) y (canonicalDef y))
+      (cong Canonical (canonicalDef y))
+      (canonical' (toCanonical (from x)) y (canonicalDef y))
 

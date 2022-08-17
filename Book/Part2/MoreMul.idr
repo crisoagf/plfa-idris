@@ -1,4 +1,4 @@
-module MorePrim
+module Book.Part2.MoreMul
 import Data.Nat
 import Data.Nat.Order
 import Decidable.Decidable
@@ -15,7 +15,6 @@ public export
 data LambdaType : Type where
   (~>) : LambdaType -> LambdaType -> LambdaType
   Nat : LambdaType
-  N : LambdaType
   (*) : LambdaType -> LambdaType -> LambdaType
 
 public export
@@ -31,10 +30,10 @@ data Has : Context -> LambdaType -> Type where
   Z : Has (ctx :: a) a
   S : Has ctx a -> Has (ctx :: b) a
 
-test1 : MorePrim.test `Has` Nat
+test1 : MoreMul.test `Has` Nat
 test1 = Z
 
-test2 : MorePrim.test `Has` Nat ~> Nat
+test2 : MoreMul.test `Has` Nat ~> Nat
 test2 = S Z
 
 public export
@@ -46,24 +45,21 @@ data (|-) : Context -> LambdaType -> Type where
   Suc : ctx |- Nat -> ctx |- Nat
   Case : ctx |- Nat -> ctx |- a -> ctx :: Nat |- a -> ctx |- a
   Mu : ctx :: a |- a -> ctx |- a
-  Prim : (a : Prelude.Nat) -> ctx |- N
-  PrimMul : ctx |- N -> ctx |- N -> ctx |- N
-  Let : ctx |- a -> ctx :: a |- b -> ctx |- b
   Proj1 : ctx |- a * b -> ctx |- a
   Proj2 : ctx |- a * b -> ctx |- b
   Pair : ctx |- a -> ctx |- b -> ctx |- a * b
   CaseP : ctx |- a * b -> ctx :: a :: b |- c -> ctx |- c
 
-test3 : MorePrim.test |- Nat
+test3 : MoreMul.test |- Nat
 test3 = Zero
 
-test4 : MorePrim.test |- Nat ~> Nat
+test4 : MoreMul.test |- Nat ~> Nat
 test4 = Var (S Z)
 
-test5 : MorePrim.test |- Nat
+test5 : MoreMul.test |- Nat
 test5 = Var (S Z) `App` Var Z
 
-test6 : MorePrim.test |- Nat
+test6 : MoreMul.test |- Nat
 test6 = Var (S Z) `App` (Var (S Z) `App` Var Z)
 
 test7 : Empty :: Nat ~> Nat |- Nat ~> Nat
@@ -76,10 +72,12 @@ length : Context -> Prelude.Nat
 length Empty = Z
 length (ctx :: _) = S (length ctx)
 
+public export
 lookup : {ctx : Context} -> {n : Nat} -> (p : n `LT` length ctx) -> LambdaType
 lookup {ctx = _::a} {n = 0} (LTESucc LTEZero) = a
 lookup {ctx = ctx::_} {n = S k} (LTESucc x) = lookup x
 
+public export
 count : {ctx : Context} -> {n : Nat} -> (p : n `LT` length ctx) -> ctx `Has` lookup {ctx} p
 count {ctx = _::_} {n = 0} (LTESucc LTEZero) = Z
 count {ctx = ctx::_} {n = (S k)} (LTESucc p) = S (count p)
@@ -88,27 +86,34 @@ public export
 (#) : {ctx  : Context} -> (n : Nat) -> {auto nIndex : n `LT` length ctx} -> ctx |- lookup {ctx} nIndex
 (#) n {nIndex} = Var (count nIndex)
 
+public export
 two : ctx |- Nat
 two = Suc (Suc Zero)
 
+public export
 plus : {ctx : Context} -> ctx |- Nat ~> Nat ~> Nat
 plus = Mu $ Lam $ Lam $ Case (# 1) (# 0) (Suc ((# 3) `App` (# 0) `App` (# 1)))
 
+public export
 twoPlusTwo : {ctx : Context} -> ctx |- Nat
 twoPlusTwo = plus `App` two `App` two
 
+public export
 Ch : LambdaType -> LambdaType
 Ch a = (a ~> a) ~> a ~> a
 
+public export
 twoCh : {ctx : Context} -> {a : LambdaType} -> ctx |- Ch a
 twoCh = Lam (Lam ((# 1) `App` ((# 1) `App` (# 0))))
 
+public export
 plusCh : {ctx : Context} -> {a : LambdaType} -> ctx |- Ch a ~> Ch a ~> Ch a
 plusCh = Lam (Lam (Lam (Lam ((# 3) `App` (# 1) `App` ((# 2) `App` (# 1) `App` (# 0))))))
 
 suc : {ctx : Context} -> ctx |- Nat ~> Nat
 suc = Lam (Suc (# 0))
 
+public export
 twoPlusTwoCh : {ctx : Context} -> {a : LambdaType} -> ctx |- Ch a
 twoPlusTwoCh = plusCh `App` twoCh `App` twoCh
 
@@ -132,9 +137,6 @@ rename f Zero = Zero
 rename f (Suc x) = Suc (rename f x)
 rename f (Case x y z) = Case (rename f x) (rename f y) (rename (ext f) z)
 rename f (Mu x) = Mu (rename (ext f) x)
-rename f (Prim n) = Prim n
-rename f (PrimMul m1 m2) = PrimMul (rename f m1) (rename f m2)
-rename f (Let x expr) = Let (rename f x) (rename (ext f) expr)
 rename f (Proj1 x) = Proj1 (rename f x)
 rename f (Proj2 x) = Proj2 (rename f x)
 rename f (Pair x y) = Pair (rename f x) (rename f y)
@@ -154,9 +156,6 @@ subst f Zero = Zero
 subst f (Suc x) = Suc (subst f x)
 subst f (Case x y z) = Case (subst f x) (subst f y) (subst (exts f) z)
 subst f (Mu x) = Mu (subst (exts f) x)
-subst f (Prim n) = Prim n
-subst f (PrimMul m1 m2) = PrimMul (subst f m1) (subst f m2)
-subst f (Let x expr) = Let (subst f x) (subst (exts f) expr)
 subst f (Proj1 x) = Proj1 (subst f x)
 subst f (Proj2 x) = Proj2 (subst f x)
 subst f (Pair x y) = Pair (subst f x) (subst f y)
@@ -180,7 +179,7 @@ m3 = Lam (Suc (# 0))
 m4 : Empty |- Nat ~> Nat
 m4 = Lam (Lam (Suc (# 0)) `App` (Lam (Suc (# 0)) `App` (# 0)))
 
-test9 : replace MorePrim.m2 MorePrim.m3 = MorePrim.m4
+test9 : replace MoreMul.m2 MoreMul.m3 = MoreMul.m4
 test9 = Refl
 
 m5 : Empty :: Nat ~> Nat :: Nat |- (Nat ~> Nat) ~> Nat
@@ -192,7 +191,7 @@ m6 = (# 0) `App` Zero
 m7 : Empty :: Nat ~> Nat |- (Nat ~> Nat) ~> Nat
 m7 = Lam ((# 0) `App` ((# 1) `App` Zero))
 
-test10 : replace MorePrim.m5 MorePrim.m6 = MorePrim.m7
+test10 : replace MoreMul.m5 MoreMul.m6 = MoreMul.m7
 test10 = Refl
 
 public export
@@ -200,7 +199,6 @@ data Value : ctx |- a -> Type where
   VLam : {n : ctx :: a |- b} -> Value (Lam n)
   VZero : Value Zero
   VSuc : {n : ctx |- Nat} -> Value n -> Value (Suc n)
-  VNat : Value (Prim n)
   VPair : Value a -> Value b -> Value (Pair a b)
 
 infix 2 -=>
@@ -216,11 +214,6 @@ data (-=>) : ctx |- a -> ctx |- a -> Type where
   BetaZero : Case Zero m n -=> m
   BetaSuc : Value v -> Case (Suc v) m n -=> replace n v
   BetaMu : Mu n -=> replace n (Mu n)
-  IntroMulLeft : left -=> left' -> PrimMul left middle -=> PrimMul left' middle
-  IntroMulRight : Value left -> middle -=> middle' -> PrimMul left middle -=> PrimMul left middle'
-  BetaMul : PrimMul (Prim n) (Prim m) -=> Prim (n * m)
-  IntroLet : a -=> a' -> Let a x -=> Let a' x
-  BetaLet : Value a -> Let a x -=> replace x a
   IntroProj1 : a -=> a' -> Proj1 a -=> Proj1 a'
   IntroProj2 : a -=> a' -> Proj2 a -=> Proj2 a'
   BetaProj1 : Value a -> Value b -> Proj1 (Pair a b) -=> a
@@ -235,7 +228,7 @@ data (-=>>) : ctx |- a -> ctx |- a -> Type where
   Refl : m -=>> m
   Trans : (0 l : ctx |- a) -> l -=> m -> m -=>> n -> l -=>> n
 
-test11 : MorePrim.twoCh `App` MorePrim.suc `App` Zero {ctx = Empty} -=>> MorePrim.two
+test11 : MoreMul.twoCh `App` MoreMul.suc `App` Zero {ctx = Empty} -=>> MoreMul.two
 test11 =
   Trans (twoCh `App` suc `App` Zero) (IntroAppLeft (BetaLam VLam))
   $ Trans (Lam (suc `App` (suc `App` (# 0))) `App` Zero) (BetaLam VZero)
@@ -243,7 +236,7 @@ test11 =
   $ Trans (suc `App` Suc Zero) (BetaLam (VSuc VZero))
   $ Refl
 
-test12 : MorePrim.plus {ctx = Empty} `App` MorePrim.two `App` MorePrim.two -=>> Suc (Suc (Suc (Suc Zero)))
+test12 : MoreMul.plus {ctx = Empty} `App` MoreMul.two `App` MoreMul.two -=>> Suc (Suc (Suc (Suc Zero)))
 test12 =
   Trans (plus `App` two `App` two) (IntroAppLeft (IntroAppLeft BetaMu))
   $ Trans (Lam (Lam (Case (# 1) (# 0) (Suc (plus `App` (# 0) `App` (# 1))))) `App` two `App` two) (IntroAppLeft (BetaLam (VSuc (VSuc VZero))))
@@ -294,16 +287,6 @@ progress (Case x y z) = assert_total $ case progress x of
                              (Done (VSuc w)) => Step (BetaSuc w)
                              (Done VLam) impossible
 progress (Mu x) = Step BetaMu
-progress (Prim n) = Done VNat
-progress (PrimMul n1 n2) with (progress n1)
-  progress (PrimMul n1 n2) | (Step x) = Step (IntroMulLeft x)
-  progress (PrimMul n1 n2) | (Done x) with (progress n2)
-    progress (PrimMul n1 n2) | (Done x) | (Step y) = Step (IntroMulRight x y)
-    progress (PrimMul n1 n2) | (Done x) | (Done y) = assert_total $ case (x,y) of
-                                                       (VNat, VNat) => Step BetaMul
-progress (Let x expr) with (progress x)
-  progress (Let x expr) | (Step y) = Step (IntroLet y)
-  progress (Let x expr) | (Done y) = Step (BetaLet y)
 progress (Proj1 x) with (progress x)
   progress (Proj1 x) | (Step y) = Step (IntroProj1 y)
   progress (Proj1 x) | (Done y) = case (x,y) of
@@ -345,7 +328,7 @@ test13 : eval 3 (Mu (Suc (# 0))) = MkDPair (Suc (Suc (Suc (Mu (Suc (Var Z))))))
   OutOfGas )
 test13 = Refl
 
-test14 : eval 100 (MorePrim.twoCh `App` MorePrim.suc `App` Zero) = MkDPair (Suc (Suc Zero))
+test14 : eval 100 (MoreMul.twoCh `App` MoreMul.suc `App` Zero) = MkDPair (Suc (Suc Zero))
   ( ReduceStep (IntroAppLeft (BetaLam VLam))
   $ ReduceStep (BetaLam VZero)
   $ ReduceStep (IntroAppRight VLam (BetaLam VZero))
@@ -355,7 +338,7 @@ test14 : eval 100 (MorePrim.twoCh `App` MorePrim.suc `App` Zero) = MkDPair (Suc 
 test14 = Refl
 
 
-test15 : eval 100 (MorePrim.plus `App` MorePrim.two `App` MorePrim.two) = MkDPair (Suc (Suc (Suc (Suc Zero))))
+test15 : eval 100 (MoreMul.plus `App` MoreMul.two `App` MoreMul.two) = MkDPair (Suc (Suc (Suc (Suc Zero))))
   ( ReduceStep (IntroAppLeft (IntroAppLeft BetaMu))
   $ ReduceStep (IntroAppLeft (BetaLam (VSuc (VSuc VZero))))
   $ ReduceStep (BetaLam (VSuc (VSuc VZero)))

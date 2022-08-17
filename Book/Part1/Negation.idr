@@ -1,6 +1,6 @@
-module Negation
-import Connectives
-import Isomorphism
+module Book.Part1.Negation
+import Book.Part1.Connectives
+import Book.Part1.Isomorphism
 import Data.Nat
 
 %default total
@@ -29,13 +29,13 @@ assimilation ext negx negx' = ext (\ x => case negx x of {})
 ltIrreflexive : Not (LT a a)
 ltIrreflexive (LTESucc x) = ltIrreflexive x
 
-data Trichotomous : {0 a : Type} -> (0 rel : a -> a -> Type) -> (0 _ : a) -> (0 _ : a) -> Type where
-  Refl    : {x : a} -> Not (rel x x) -> Trichotomous rel x x
-  Direct  : {x,y : a} -> rel x y -> Not (rel y x) -> Trichotomous rel x y
-  Inverse : {x,y : a} -> rel y x -> Not (rel x y) -> Trichotomous rel x y
+data TrichotomyAt : {0 a : Type} -> (0 rel : a -> a -> Type) -> (0 _ : a) -> (0 _ : a) -> Type where
+  Refl    : {x : a} -> Not (rel x x) -> TrichotomyAt rel x x
+  Direct  : {x,y : a} -> rel x y -> Not (rel y x) -> TrichotomyAt rel x y
+  Inverse : {x,y : a} -> rel y x -> Not (rel x y) -> TrichotomyAt rel x y
 
-Trichotomy : (rel : a -> a -> Type) -> Type
-Trichotomy rel = (x,y : a) -> Trichotomous rel x y
+Trichotomy : {a : Type} -> (rel : a -> a -> Type) -> Type
+Trichotomy rel = (x,y : a) -> TrichotomyAt rel x y
 
 ltTrich : Trichotomy LT
 ltTrich 0 0 = Refl ltIrreflexive

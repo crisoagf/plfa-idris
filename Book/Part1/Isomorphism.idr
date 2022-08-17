@@ -1,7 +1,7 @@
-module Isomorphism
-import Naturals
-import Induction
-import Relations
+module Book.Part1.Isomorphism
+import Book.Part1.Naturals
+import Book.Part1.Induction
+import Book.Part1.Relations
 import Control.Order
 import Control.Relation
 

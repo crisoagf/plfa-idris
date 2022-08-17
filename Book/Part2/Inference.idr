@@ -1,7 +1,7 @@
-module Inference
+module Book.Part2.Inference
 
 import Decidable.Equality
-import MoreMul
+import Book.Part2.MoreMul
 %default total
 
 Extensionality : Type

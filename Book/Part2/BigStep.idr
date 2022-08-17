@@ -1,9 +1,9 @@
-module BigStep
+module Book.Part2.BigStep
 
-import Confluence
-import Untyped
-import Quantifiers
-import Substitution
+import Book.Part2.Confluence
+import Book.Part2.Untyped
+import Book.Part1.Quantifiers
+import Book.Appendix.Substitution
 
 ClosEnv : Context -> Type
 
@@ -44,11 +44,11 @@ envId impossible
 extSubst : Subst ctx ctx' -> ctx' |- Star -> Subst (ctx :: Star) ctx'
 extSubst sigma n = subst (substZero n) . exts sigma
 
-substZeroExts : {auto extn : Extensionality}
-  -> {sigma : Subst ctx ctx'} -> {m : _} -> (subst (substZero m) . exts sigma) (S x) = sigma x
+substZeroExts : FunExt
+  => {sigma : Subst ctx ctx'} -> {m : _} -> (subst (substZero m) . exts sigma) (S x) = sigma x
 substZeroExts = cong (\ f => f (S x)) (substZeroExtsCons {sigma} {m})
 
-envExt : {auto extn : Extensionality} -> {sigma : Subst ctx Empty}
+envExt : FunExt => {sigma : Subst ctx Empty}
    -> env `EnvFor` sigma -> clos `Closes` n -> (env :: clos) `EnvFor` extSubst sigma n
 envExt f y {x = Z} = y
 envExt f y {x = (S x)} = rewrite substZeroExts {sigma} {m = n} {x} in f
@@ -57,8 +57,8 @@ unstuck : (env : ClosEnv ctx) -> (x : ctx `Has` Star) -> (ctx' : Context ** (mcl
 unstuck {ctx = ctx'} env x with (env x)
   unstuck {ctx = ctx'} env x | (MkClos {ctx = ctx''} m f) = (ctx'' ** ((m, f) ** Refl))
 
-closureReduces : {auto extn : Extensionality}
-  -> {ctx : _}
+closureReduces : FunExt
+  => {ctx : _}
   -> {env : ClosEnv ctx}
   -> {sigma : Subst ctx Empty}
   -> {m : ctx |- Star}
@@ -79,8 +79,8 @@ closureReduces {m = l `App` r} (CApp {n} x y) f with (closureReduces {sigma} x f
             let g = appLCong z >> rs in MkDPair n' (g, u)
 
 
-cbnReduce : {auto extn : Extensionality}
-  -> {m : Empty |- Star}
+cbnReduce : FunExt
+  => {m : Empty |- Star}
   -> {ctx : _}
   -> {env : ClosEnv ctx} 
   -> {n' : ctx :: Star |- Star}

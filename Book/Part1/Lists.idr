@@ -1,11 +1,13 @@
-module Lists
-import Naturals
-import Isomorphism
-import Quantifiers
+module Book.Part1.Lists
+import Book.Part1.Naturals
+import Book.Part1.Induction
+import Book.Part1.Isomorphism
+import Book.Part1.Quantifiers
 import Data.List
 import Data.List.Quantifiers as Qs
 import Data.Nat
 import Syntax.PreorderReasoning
+import Syntax.EqReasoning
 
 %default total
 
@@ -43,12 +45,13 @@ reverseDistrib (x :: xs) ys = rewrite revOnto' [x] (append xs ys) in
                               rewrite reverseDistrib xs ys in
                               rewrite appendAssoc (reverse ys) (reverse xs) [x] in
                               rewrite sym (revOnto' [x] xs) in Refl
-reverseInvolutive : (xs : List a) -> reverse (reverse xs) = xs
-reverseInvolutive [] = Refl
-reverseInvolutive (x :: xs) =
-  rewrite revOnto' [x] xs in
-  rewrite reverseDistrib (reverse xs) [x] in
-  rewrite reverseInvolutive xs in Refl
+
+-- reverseInvolutive : (xs : List a) -> reverse (reverse xs) = xs
+-- reverseInvolutive [] = Refl
+-- reverseInvolutive (x :: xs) =
+--   rewrite revOnto' [x] xs in
+--   rewrite reverseDistrib (reverse xs) [x] in
+--   rewrite the (reverse (reverse xs) = xs) (reverseInvolutive xs) in Refl
 
 map : (a -> b) -> (1 _ : List a) -> List b
 map f [] = []
@@ -105,15 +108,34 @@ downFrom : Nat -> List Nat
 downFrom Z = []
 downFrom (S n) = n :: downFrom n
 
+breakSum : {n : Nat} -> {l : List Nat} -> sum (n :: l) = n + sum l
+breakSum {n} {l = []} = sym (zRightId n)
+breakSum {n} {l = x :: l} = Calc $
+  |~ sum (n :: x :: l)
+  ~= foldl (+) 0 (n :: x :: l)
+  ~= foldl (+) n (x :: l)
+  ~= foldl (+) (n + x) l
+  ~= sum (n + x :: l)
+  ~~ (n + x) + sum l ...(breakSum)
+  ~~ n + (x + sum l) ...(plusAssoc n x (sum l))
+  ~~ n + (sum (x :: l)) ...(cong (n +) (sym breakSum))
+
 sumDown : (n : Nat) -> sum (downFrom n) * 2 = n * (monus n 1)
 sumDown 0 = Refl
-sumDown (S k) =
-  rewrite multDistributesOverPlusLeft k (sum (downFrom k)) 2 in
-  rewrite sumDown k in
-  rewrite sym $ multDistributesOverPlusRight k 2 (monus k 1) in
-    case k of
-      0 => Refl
-      (S _) => multRightSuccPlus k k
+sumDown (S n) = Calc $
+  |~ sum (downFrom (S n)) * 2
+  ~= sum (n :: downFrom n) * 2
+  ~~ (n + sum (downFrom n)) * 2 ...(cong (*2) breakSum)
+  ~~ n * 2 + sum (downFrom n) * 2 ...(multDistributesOverPlusLeft n (sum (downFrom n)) 2)
+  ~~ n * 2 + n * monus n 1 ...(cong (n * 2 +) (sumDown n))
+  ~~ (S n) * (monus (S n) 1) ...(case n of
+    0 => the (0 * 2 + 0 * 0 = 1 * monus 1 1) Refl
+    (S n') => Calc $
+      |~ S n' * 2 + S n' * monus (S n') 1
+      ~= S n' * 2 + S n' * n'
+      ~~ S n' * (S (S n')) ...(sym $ multDistributesOverPlusRight (S n') 2 n')
+      ~~ (S (S n')) * S n' ...(timesComm (S n') (S (S n')))
+      ~= S n * monus (S n) 1)
 
 record IsMonoid {0 a : Type} (0 op : a -> a -> a) (0 e : a) where
   constructor MkMonoid
@@ -149,8 +171,6 @@ foldrMonoidAppend x xs ys =
 foldl' : (b -> a -> b) -> b -> List a -> b
 foldl' op e [] = e
 foldl' op e (x :: xs) = foldl' op (op e x) xs
-
-infixr 4 `trans`
 
 foldlMonoid' : IsMonoid op e -> (0 ze : a) -> (xs : List a) -> (y : a)
             -> foldl op (op y ze) xs = op y (foldl op ze xs)
@@ -192,8 +212,7 @@ anySplit (_ :: xs) (There x) with (anySplit xs x)
   anySplit (_ :: xs) (There x) | (Right y) = Right y
 
 anyJoin : {0 P : a -> Type} -> (1 xs : List a) -> Either (Any P xs) (Any P ys) -> Any P (xs ++ ys)
-anyJoin [] (Left (Here x)) impossible
-anyJoin [] (Left (There x)) impossible
+anyJoin [] (Left x) impossible
 anyJoin [] (Right x) = x
 anyJoin (y :: xs) (Left (Here x)) = Here x
 anyJoin (y :: xs) (Left (There x)) = There (anyJoin xs (Left x))
@@ -227,15 +246,15 @@ allNotToNotAny [] (There x) impossible
 allNotToNotAny (x :: z) (Here y) = x y
 allNotToNotAny (x :: z) (There y) = allNotToNotAny z y
 
-notAnyId : Extensionality -> {0 P : a -> Type} -> {xs : List a} -> (x : Not (Any P xs)) -> allNotToNotAny (notAnyToAllNot xs x) = x
-notAnyId ext x = ext (\ z => case x z of {})
+notAnyId : FunExt => {0 P : a -> Type} -> {xs : List a} -> (x : Not (Any P xs)) -> allNotToNotAny (notAnyToAllNot xs x) = x
+notAnyId x = funExt (\ z => case x z of {})
 
 allNotId : {0 P : a -> Type} -> (y : All (\x => P x -> Void) xs) -> notAnyToAllNot xs (allNotToNotAny y) = y
 allNotId [] = Refl
 allNotId (x :: y) = rewrite allNotId y in Refl
 
-notAnyIsoAllNot : Extensionality -> {0 P : a -> Type} -> (xs : List a) -> Iso (Not (Any P xs)) (All (Not . P) xs)
-notAnyIsoAllNot ext xs = MkIso (notAnyToAllNot xs) allNotToNotAny (notAnyId ext) allNotId
+notAnyIsoAllNot : FunExt => {0 P : a -> Type} -> (xs : List a) -> Iso (Not (Any P xs)) (All (Not . P) xs)
+notAnyIsoAllNot xs = MkIso (notAnyToAllNot xs) allNotToNotAny notAnyId allNotId
 
 anyNotToNotAll : {0 P : a -> Type} -> Any (Not . P) xs -> Not (All P xs)
 anyNotToNotAll (Here x) (y :: _) = x y
@@ -262,15 +281,15 @@ allForallId : {0 P : (a -> Type)} -> (x : All P xs) -> forallToAll (allToForall 
 allForallId [] = Refl
 allForallId (x :: y) = rewrite the (forallToAll (\ y', z => allToForall y y' z) = y) (allForallId y) in Refl
 
-forallAllId : (ext : Extensionality) -> {0 P : (a -> Type)} -> {xs : List a} -> (y : ((x : a) -> Elem x xs -> P x)) -> allToForall (forallToAll y) = y
-forallAllId ext {xs = []} y = ext (\ x => ext $ \ noWay => absurd noWay)
-forallAllId ext {xs = (_ :: xs)} y = ext (\ x => ext $ \ elemxxs => case elemxxs of
+forallAllId : FunExt => {0 P : (a -> Type)} -> {xs : List a} -> (y : ((x : a) -> Elem x xs -> P x)) -> allToForall (forallToAll y) = y
+forallAllId {xs = []} y = funExt (\ x => funExt $ \ noWay => absurd noWay)
+forallAllId {xs = (_ :: xs)} y = funExt (\ x => funExt $ \ elemxxs => case elemxxs of
   (Here Refl) => Refl
-  (There z) => rewrite cong (\ f => f x z) (forallAllId ext {xs = xs} (\ y', z => y y' (There z))) in Refl
+  (There z) => rewrite cong (\ f => f x z) (forallAllId {xs = xs} (\ y', z => y y' (There z))) in Refl
   )
 
-allForallIso : (ext : Extensionality) -> {0 P : a -> Type} -> {xs : List a} -> Iso (All P xs) ((x : a) -> Elem x xs -> P x)
-allForallIso ext = MkIso allToForall forallToAll allForallId (forallAllId ext)
+allForallIso : FunExt => {0 P : a -> Type} -> {xs : List a} -> Iso (All P xs) ((x : a) -> Elem x xs -> P x)
+allForallIso = MkIso allToForall forallToAll allForallId forallAllId
 
 anyToExists : {0 P : a -> Type} -> (xs : List a) -> Any P xs -> (x : a ** (Any (\y => x = y) xs, P x))
 anyToExists [] (Here x) impossible
@@ -302,7 +321,7 @@ existsAnyId {xs = _ :: xs} (MkDPair fst (There x, y)) with (existsAnyId (the (DP
 anyExistsIso : {0 P : a -> Type} -> {xs : List a} -> Iso (Any P xs) (DPair a (\ x => (Elem x xs, P x)))
 anyExistsIso = MkIso (anyToExists xs) existsToAny anyExistsId existsAnyId
 
-Decidable : (0 p : a -> Type) -> Type
+Decidable : {a : Type} -> (p : a -> Type) -> Type
 Decidable p = (x : a) -> Dec (p x)
 
 allQ : {0 P : a -> Type} -> Decidable P -> Decidable (All P)
@@ -327,12 +346,10 @@ data Merge : {a : Type} -> (xs, ys, zs : List a) -> Type where
   RightMerge : Merge xs ys zs -> Merge xs (y :: ys) (y :: zs)
 
 split : {0 P : a -> Type} -> Decidable P -> (zs : List a)
-     -> DPair (List a, List a) (\ (xs, ys) => (Merge xs ys zs, All P xs, All (Not . P) ys))
-split f [] = MkDPair ([],[]) (Empty, ([], []))
+     -> (xs : List a ** ys : List a ** (Merge xs ys zs, All P xs, All (Not . P) ys))
+split f [] = ([] ** [] ** (Empty, [], []))
 split f (z :: zs) with (split f zs)
-  split f (z :: zs) | MkDPair (xs, ys) (prevMerges, allXs, allNotYs) with (f z)
-    split f (z :: zs) | MkDPair (xs, ys) (prevMerges, allXs, allNotYs) | (Yes proof)
-      = MkDPair (z :: xs, ys) (LeftMerge  prevMerges, (proof  :: allXs, allNotYs))
-    split f (z :: zs) | MkDPair (xs, ys) (prevMerges, allXs, allNotYs) | (No contra)
-      = MkDPair (xs, z :: ys) (RightMerge prevMerges, (allXs, contra :: allNotYs))
+  split f (z :: zs) | (xs ** (ys ** (merge, allxs, allys))) with (f z)
+    split f (z :: zs) | (xs ** (ys ** (merge, allxs, allys))) | (Yes prf) = (z :: xs ** (ys ** (LeftMerge merge, prf :: allxs, allys)))
+    split f (z :: zs) | (xs ** (ys ** (merge, allxs, allys))) | (No contra) = (xs ** (z :: ys ** (RightMerge merge, allxs, contra :: allys)))
 

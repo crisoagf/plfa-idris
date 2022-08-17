@@ -1,6 +1,6 @@
-module Bisimulation
+module Book.Part2.Bisimulation
 
-import MorePrim
+import Book.Part2.MorePrim
 
 %default total
 

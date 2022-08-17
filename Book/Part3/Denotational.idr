@@ -1,7 +1,7 @@
-module Denotational
-import Untyped
-import Substitution
-import Quantifiers
+module Book.Part3.Denotational
+import Book.Part2.Untyped
+import Book.Appendix.Substitution
+import Book.Part1.Quantifiers
 import Data.Nat
 import Data.Vect
 
@@ -62,8 +62,8 @@ init f x = f (S x)
 last : Env (ctx :: Star) -> Value
 last f = f Z
 
-initLast : {auto extn : Extensionality} -> (env : Env (ctx :: Star)) -> env = init env :: last env
-initLast env = extn lemma
+initLast : FunExt => (env : Env (ctx :: Star)) -> env = init env :: last env
+initLast env = funExt lemma
   where lemma : (x : _) -> env x = (init env :: last env) x
         lemma Z = Refl
         lemma (S x) = Refl
@@ -164,14 +164,14 @@ renamePres rho f BotIntro = BotIntro
 renamePres rho f (UIntro x y) = UIntro (renamePres rho f x) (renamePres rho f y)
 renamePres rho f (Sub x y) = Sub (renamePres rho f x) y
 
-ltEnv : {auto extn : Extensionality}
-     -> {env' : _}
+ltEnv : FunExt
+     => {env' : _}
      -> env |- (m, v) -> env :<<=: env' -> env' |- (m, v)
 ltEnv x f with (renamePres (\ x => x) f x)
   ltEnv x f | c = rewrite sym (renameId {m}) in c
 
-upEnv : {auto extn : Extensionality}
-     -> {env : _} -> {u2 : _} -> (env :: u1) |- (m, v) -> u1 :<=: u2 -> (env :: u2) |- (m, v)
+upEnv : FunExt
+     => {env : _} -> {u2 : _} -> (env :: u1) |- (m, v) -> u1 :<=: u2 -> (env :: u2) |- (m, v)
 upEnv x y = ltEnv x (extLe y)
   where extLe : u1 :<=: u2 -> (env :: u1) :<<=: (env :: u2)
         extLe y Z = y
@@ -196,8 +196,8 @@ church : (n : Nat) -> Empty |- Star
 church n = Lam (Lam (applyN n))
 
 denotApplyN
-  : {auto extn : Extensionality}
-  -> (x : Value) -> (xs : Vect n Value) -> ((Empty :: dsuc (x :: xs)) :: vecLast (x :: xs)) |- (applyN n, x)
+  : FunExt
+  => (x : Value) -> (xs : Vect n Value) -> ((Empty :: dsuc (x :: xs)) :: vecLast (x :: xs)) |- (applyN n, x)
 denotApplyN x [] = Var
 denotApplyN x (y :: xs) with (denotApplyN y xs)
   denotApplyN x (y :: xs) | denotTail = FunElim (Sub Var (Inj1 reflI)) (ltEnv denotTail lemma)
@@ -206,8 +206,8 @@ denotApplyN x (y :: xs) with (denotApplyN y xs)
           lemma (S Z) = Inj2 reflI
 
 denotChurch
-  : {auto extn : Extensionality}
-  -> (ls : Vect (S n) Value) -> Empty |- (church n, dCh ls)
+  : FunExt
+  => (ls : Vect (S n) Value) -> Empty |- (church n, dCh ls)
 denotChurch (x :: xs) = FunIntro . FunIntro $ denotApplyN x xs
 
 infix 5 `Elem`

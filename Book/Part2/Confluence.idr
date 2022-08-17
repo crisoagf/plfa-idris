@@ -1,8 +1,8 @@
-module Confluence
+module Book.Part2.Confluence
 
-import Quantifiers
-import Untyped
-import Substitution
+import Book.Part1.Quantifiers
+import Book.Part2.Untyped
+import Book.Appendix.Substitution
 
 diamondCounterexample : ctx |- Star -> ctx |- Star
 diamondCounterexample m = Lam (Var Z `App` Var Z) `App` (Lam (Var Z) `App` m)
@@ -55,7 +55,7 @@ parBetas (x `Trans` y) = parBeta x >> parBetas y
 ParSubst : Subst ctx ctx' -> Subst ctx ctx' -> Type
 ParSubst sigma sigma' = {0 a : LambdaType} -> {x : ctx `Has` a} -> sigma x ==> sigma' x
 
-parRename : {auto extn : Extensionality} -> {rho : Rename ctx ctx'} -> {m, m' : ctx |- _} -> m ==> m' -> rename rho m ==> rename rho m'
+parRename : FunExt => {rho : Rename ctx ctx'} -> {m, m' : ctx |- _} -> m ==> m' -> rename rho m ==> rename rho m'
 parRename Pvar = Pvar
 parRename (Pabs x) = Pabs (parRename x)
 parRename (Papp x y) = Papp (parRename x) (parRename y)
@@ -63,11 +63,11 @@ parRename (Pbeta {m} {n} {m'} {n'} x y) with (Pbeta (parRename {rho = ext rho} x
   parRename (Pbeta x y) | g with (renameSubstCommute {m = m'} {n = n'} {rho})
     parRename (Pbeta x y) | g | rsc = replace {p = \ x => Lam (rename (ext rho) n) `App` rename rho m ==> x} rsc g
 
-parSubstExts : {auto extn : Extensionality} -> {sigma, tau : Subst _ _} -> ParSubst sigma tau -> {b : _} -> ParSubst (exts sigma {b}) (exts tau)
+parSubstExts : FunExt => {sigma, tau : Subst _ _} -> ParSubst sigma tau -> {b : _} -> ParSubst (exts sigma {b}) (exts tau)
 parSubstExts f {x = Z} = Pvar
 parSubstExts f {x = (S x)} = parRename f
 
-substPar : {auto extn : Extensionality} -> {sigma, tau : Subst _ _} -> ParSubst sigma tau -> m ==> m' -> subst sigma m ==> subst tau m'
+substPar : FunExt => {sigma, tau : Subst _ _} -> ParSubst sigma tau -> m ==> m' -> subst sigma m ==> subst tau m'
 substPar f Pvar = f
 substPar f (Pabs x) = Pabs (substPar {sigma = exts sigma} {tau = exts tau} (parSubstExts {sigma} {tau} f) x)
 substPar f (Papp x y) = Papp (substPar {sigma} {tau} f x) (substPar {sigma} {tau} f y)
@@ -78,7 +78,7 @@ parSubstZero : m ==> m' -> ParSubst (substZero m) (substZero m')
 parSubstZero y {x = Z} = y
 parSubstZero y {x = (S x)} = Pvar
 
-subPar : {auto extn : Extensionality} -> {n,n' : _ |- _} -> {m,m' : _} -> n ==> n' -> m ==> m' -> replace n m ==> replace n' m'
+subPar : FunExt => {n,n' : _ |- _} -> {m,m' : _} -> n ==> n' -> m ==> m' -> replace n m ==> replace n' m'
 subPar nn' mm' = substPar {sigma = substZero m} {tau = substZero m'} (parSubstZero mm') nn'
 
 fullEval : ctx |- a -> ctx |- a
@@ -87,7 +87,7 @@ fullEval (Lam x) = Lam (fullEval x)
 fullEval ((Lam x) `App` y) = replace (fullEval x) (fullEval y)
 fullEval (x `App` y) = fullEval x `App` fullEval y
 
-parTriangle : {auto extn : Extensionality} -> m ==> n -> n ==> fullEval m
+parTriangle : FunExt => m ==> n -> n ==> fullEval m
 parTriangle Pvar = Pvar
 parTriangle (Pabs x) = Pabs (parTriangle x)
 parTriangle (Papp {m = (Var z)} x y) = Papp (parTriangle x) (parTriangle y)
@@ -98,11 +98,11 @@ parTriangle (Pbeta {m} {n} {m'} {n'} x y) with (parTriangle x)
   parTriangle (Pbeta {m} {n} {m'} {n'} x y) | trix with (parTriangle y)
     parTriangle (Pbeta {m} {n} {m'} {n'} x y) | trix | triy = subPar trix triy
 
-parDiamond : {auto extn : Extensionality} -> {m : _} -> m ==> n -> m ==> n' -> (l : _ ** (n ==> l, n' ==> l))
+parDiamond : FunExt => {m : _} -> m ==> n -> m ==> n' -> (l : _ ** (n ==> l, n' ==> l))
 parDiamond {m} x y = (fullEval m ** (parTriangle x, parTriangle y))
 
 
-parDiamondDirect : {auto extn : Extensionality} -> {m : _} -> m ==> n -> m ==> n' -> (l : _ ** (n ==> l, n' ==> l))
+parDiamondDirect : FunExt => {m : _} -> m ==> n -> m ==> n' -> (l : _ ** (n ==> l, n' ==> l))
 parDiamondDirect Pvar Pvar = MkDPair (Var _) (Pvar, Pvar)
 parDiamondDirect (Pabs x) (Pabs y) with (parDiamondDirect x y)
   parDiamondDirect (Pabs x) (Pabs y) | (MkDPair fst (z, w)) = MkDPair (Lam fst) (Pabs z, Pabs w)
@@ -122,19 +122,19 @@ parDiamondDirect (Pbeta x z) (Papp y w) with (parDiamondDirect z w)
                      (MkDPair u (x1, y1)) => MkDPair (replace u fst) (subPar x1 v, Pbeta y1 s)
 
 
-strip : {auto extn : Extensionality} -> {m, n : _} -> m ==> n -> m ==>> n' -> (l : _ ** (n ==>> l, n' ==> l))
+strip : FunExt => {m, n : _} -> m ==> n -> m ==>> n' -> (l : _ ** (n ==>> l, n' ==> l))
 strip x Refl = (_ ** (Refl, x))
 strip x (y `Trans` z) with (parDiamond x y)
   strip x (y `Trans` z) | (MkDPair fst (w, v)) with (strip v z)
     strip x (y `Trans` z) | (MkDPair fst (w, v)) | (MkDPair s (t, u)) = (_ ** (w `Trans` t, u))
 
-parConfluence : {auto extn : Extensionality} -> {m, n, n' : _} -> m ==>> n -> m ==>> n' -> (l : _ ** (n ==>> l, n' ==>> l))
+parConfluence : FunExt => {m, n, n' : _} -> m ==>> n -> m ==>> n' -> (l : _ ** (n ==>> l, n' ==>> l))
 parConfluence Refl y = (_ ** (y, Refl))
 parConfluence (x `Trans` z) y with (strip x y)
   parConfluence (x `Trans` z) y | (MkDPair fst (w, v)) with (parConfluence z w)
     parConfluence (x `Trans` z) y | (MkDPair fst (w, v)) | (MkDPair s (t, u)) = (s ** (t, v `Trans` u))
 
-confluence : {auto extn : Extensionality} -> {m, n, n' : _} -> m -=>> n -> m -=>> n' -> (l : _ ** (n -=>> l, n' -=>> l))
+confluence : FunExt => {m, n, n' : _} -> m -=>> n -> m -=>> n' -> (l : _ ** (n -=>> l, n' -=>> l))
 confluence x y with (parConfluence (betaPars x) (betaPars y))
   confluence x y | (MkDPair fst (z, w)) = MkDPair fst (parBetas z, parBetas w)
 

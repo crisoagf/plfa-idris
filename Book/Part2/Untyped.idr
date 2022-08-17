@@ -1,5 +1,5 @@
-module Untyped
-import Isomorphism
+module Book.Part2.Untyped
+import Book.Part1.Isomorphism
 import Data.Nat
 
 %default total

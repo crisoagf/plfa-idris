@@ -1,6 +1,6 @@
-module Lambda
+module Book.Part2.Lambda
 import Decidable.Equality
-import Isomorphism
+import Book.Part1.Isomorphism
 
 public export
 Id : Type
@@ -243,10 +243,10 @@ typeOfQuizAnswer4 (ElimArr (Axiom (S _ (S g x))) (Axiom Z)) impossible
 typeOfQuizAnswer4 (ElimArr (Axiom (S _ _)) (Axiom (S _ Z))) impossible
 typeOfQuizAnswer4 (ElimArr (Axiom (S _ _)) (Axiom (S _ (S f1 y)))) impossible
 
-typeOfQuizAnswer5 : DPair (LambdaType, LambdaType, LambdaType)
-  \ (a,b,c) => TypeOf (Assigned (Assigned Empty "x" a) "y" b) (Lam "z" (App (Var "x") (App (Var "y") (Var "z")))) c
-typeOfQuizAnswer5 = MkDPair (Arr LambdaNat LambdaNat, Arr LambdaNat LambdaNat, Arr LambdaNat LambdaNat) $
-  IntroArr $ ElimArr (Axiom . S' $ S' Z) (ElimArr (Axiom $ S' Z) (Axiom Z))
+typeOfQuizAnswer5 : (a : LambdaType ** (b : LambdaType ** (c : LambdaType **
+  TypeOf (Assigned (Assigned Empty "x" a) "y" b) (Lam "z" (App (Var "x") (App (Var "y") (Var "z")))) c)))
+typeOfQuizAnswer5 = (Arr LambdaNat LambdaNat ** (Arr LambdaNat LambdaNat ** (Arr LambdaNat LambdaNat **
+  IntroArr $ ElimArr (Axiom . S' $ S' Z) (ElimArr (Axiom $ S' Z) (Axiom Z)))))
 
 typeOfMul : TypeOf ctx Lambda.mul (Arr LambdaNat (Arr LambdaNat LambdaNat))
 typeOfMul = IntroMu $ IntroArr $ IntroArr $ IntroNCase (Axiom $ S' Z) IntroNZ $ ElimArr (ElimArr typeOfPlus (Axiom $ S' Z)) (ElimArr (ElimArr (Axiom $ S' (S' (S' Z))) (Axiom Z)) (Axiom (S' Z)))
