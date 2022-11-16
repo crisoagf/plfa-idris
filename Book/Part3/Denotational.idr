@@ -1,10 +1,12 @@
 module Book.Part3.Denotational
+
 import Book.Part2.Untyped
 import Book.Appendix.Substitution
-import Book.Part1.Quantifiers
+import Control.Function.FunExt
 import Data.Nat
 import Data.Vect
 
+public export
 data Value = Bot | (|~>) Value Value | U Value Value
 
 infix 4 :<=:
@@ -14,6 +16,7 @@ infix 5 `uEnv`
 infixr 7 |~>
 infixl 5 ::
 
+public export
 data (:<=:) : Value -> Value -> Type where
   Absurd : Bot :<=: v
   Union : v :<=: u -> w :<=: u -> v `U` w :<=: u
@@ -26,11 +29,17 @@ data (:<=:) : Value -> Value -> Type where
 umono : v :<=: v' -> w :<=: w' -> (v `U` w) :<=: (v' `U` w')
 umono x y = Union (Inj1 x) (Inj2 y)
 
+public export
 reflI : {v : Value} -> v :<=: v
 reflI {v = Bot} = Absurd
 reflI {v = (x |~> y)} = Fun reflI reflI
 reflI {v = (x `U` y)} = umono reflI reflI
 
+public export
+Reflexive Value (:<=:) where
+  reflexive = reflI
+
+public export
 uFunDist : {v, w, v', w' : _} -> (v `U` v') |~> (w `U` w') :<=: (v |~> w) `U` (v' |~> w')
 uFunDist = Dist `Trans` umono (Fun (Inj1 reflI) reflI) (Fun (Inj2 reflI) reflI)
 
@@ -46,53 +55,66 @@ uLtInvR (Inj1 x) = Inj1 (uLtInvR x)
 uLtInvR (Inj2 x) = Inj2 (uLtInvR x)
 uLtInvR (x `Trans` y) = uLtInvR x `Trans` y
 
+public export
 Env : (0 _ : Context) -> Type
 Env ctx = (x : ctx `Has` Star) -> Value
 
+public export
 Empty : Env Empty
 Empty x impossible
 
+public export
 (::) : Env ctx -> Value -> Env (ctx :: Star)
 (::) f y Z = y
 (::) f y (S x) = f x
 
+public export
 init : Env (ctx :: Star) -> Env ctx
 init f x = f (S x)
 
+public export
 last : Env (ctx :: Star) -> Value
 last f = f Z
 
+public export
 initLast : FunExt => (env : Env (ctx :: Star)) -> env = init env :: last env
 initLast env = funExt lemma
   where lemma : (x : _) -> env x = (init env :: last env) x
         lemma Z = Refl
         lemma (S x) = Refl
 
+public export
 (:<<=:) : Env ctx -> Env ctx -> Type
 (:<<=:) env env' = (x : ctx `Has` Star) -> env x :<=: env' x
 
+public export
 botEnv : Env ctx
 botEnv x = Bot
 
+public export
 uEnv : Env ctx -> Env ctx -> Env ctx
 uEnv f g x = f x `U` g x
 
+public export
 reflI' : {env : Env ctx} -> env :<<=: env
 reflI' x = reflI {v = env x}
 
+public export
 inj1 : (env : Env ctx) -> (env' : Env ctx) -> env :<<=: env `uEnv` env'
 inj1 env env' x = Inj1 reflI
 
+public export
 inj2 : (env : Env ctx) -> (env' : Env ctx) -> env' :<<=: env `uEnv` env'
 inj2 env env' x = Inj2 reflI
 
+public export
 data (|-) : Env ctx -> (ctx |- Star, Value) -> Type where
   Var : {x : _} -> env |- (Var x, env x)
-  FunElim : env |- (l, v |~> w) -> env |- (m, v) -> env |- (App l m, w)
+  FunElim : {v : _} -> env |- (l, v |~> w) -> env |- (m, v) -> env |- (App l m, w)
   FunIntro : {v : _} -> env :: v |- (n, w) -> env |- (Lam n, v |~> w)
   BotIntro : env |- (m, Bot)
   UIntro : env |- (m, v) -> env |- (m, w) -> env |- (m, v `U` w)
-  Sub : env |- (m, v) -> w :<=: v -> env |- (m, w)
+  Sub : {v : _} -> env |- (m, v) -> w :<=: v -> env |- (m, w)
 
 id : Empty |- Star
 id = Lam (Var Z)
@@ -125,27 +147,34 @@ omega = del `App` del
 denotOmega : Empty |- (Denotational.omega, Bot)
 denotOmega = FunElim denotDel (UIntro (FunIntro BotIntro) BotIntro)
 
-denotPlusCh : {ctx : _} -> {0 env : Env ctx} -> {u,v,w,x,k : _} -> env |- (Untyped.plusCh, (v |~> x |~> w) |~> (k |~> u |~> x) |~> (v `U` k) |~> u |~> w)
+denotPlusCh : {ctx : _} -> {env : Env ctx} -> {u,v,w,x,k : _} -> env |- (Untyped.plusCh, (v |~> x |~> w) |~> (k |~> u |~> x) |~> (v `U` k) |~> u |~> w)
 denotPlusCh = FunIntro . FunIntro . FunIntro . FunIntro $ FunElim (FunElim Var (Sub Var (Inj1 reflI))) (FunElim (FunElim Var (Sub Var (Inj2 reflI))) Var)
 
+public export
 iff : Type -> Type -> Type
 iff p q = (p -> q, q -> p)
 
+public export
 Denotation : Context -> Type
 Denotation ctx = (Env ctx -> Value -> Type)
 
+public export
 Denote : (m : ctx |- Star) -> Denotation ctx
 Denote m env v = env |- (m, v)
 
+public export
 (==) : Denotation ctx -> Denotation ctx -> Type
 d1 == d2 = (env : Env ctx) -> (v : Value) -> d1 env v `iff` d2 env v
 
+public export
 refl : {0 m : Denotation ctx} -> m == m
 refl env v = (\x => x, \x => x)
 
+public export
 sym : {0 m, n : Denotation ctx} -> m == n -> n == m
 sym f env v = let (mn, nm) = f env v in (nm, mn)
 
+public export
 trans : {0 m1, m2, m3 : Denotation ctx} -> m1 == m2 -> m2 == m3 -> m1 == m3
 trans f g env v with (f env v)
   trans f g env v | (m1m2,m2m1) with (g env v)
@@ -156,6 +185,7 @@ ext : {0 env : Env ctx} -> {env' : Env ctx'} -> {v : _} -> (rho : Rename ctx ctx
 ext rho f Z = reflI
 ext rho f (S x) = f x
 
+public export
 renamePres : (rho : Rename ctx ctx') -> {env' : _} -> env :<<=: (env' . rho) -> env |- (m, v) -> env' |- (rename rho m, v)
 renamePres rho f (Var {x}) = Sub Var (f x)
 renamePres rho f (FunElim x y) = FunElim (renamePres rho f x) (renamePres rho f y)
@@ -164,12 +194,14 @@ renamePres rho f BotIntro = BotIntro
 renamePres rho f (UIntro x y) = UIntro (renamePres rho f x) (renamePres rho f y)
 renamePres rho f (Sub x y) = Sub (renamePres rho f x) y
 
+public export
 ltEnv : FunExt
      => {env' : _}
      -> env |- (m, v) -> env :<<=: env' -> env' |- (m, v)
 ltEnv x f with (renamePres (\ x => x) f x)
   ltEnv x f | c = rewrite sym (renameId {m}) in c
 
+public export
 upEnv : FunExt
      => {env : _} -> {u2 : _} -> (env :: u1) |- (m, v) -> u1 :<=: u2 -> (env :: u2) |- (m, v)
 upEnv x y = ltEnv x (extLe y)
@@ -213,14 +245,17 @@ denotChurch (x :: xs) = FunIntro . FunIntro $ denotApplyN x xs
 infix 5 `Elem`
 infix 5 `Subset`
 
+public export
 Elem : Value -> Value -> Type
 Elem x Bot = x = Bot
 Elem x (y |~> z) = x = y |~> z
 Elem x (y `U` z) = Either (Elem x y) (Elem x z)
 
+public export
 Subset : Value -> Value -> Type
 Subset x y = {u : _} -> u `Elem` x -> u `Elem` y
 
+public export
 elemLt : {x, y: Value} -> Elem x y -> x :<=: y
 elemLt {x = Bot} {y = Bot} Refl = Absurd
 elemLt {x = (_ |~> _)} {y = (y |~> w)} Refl = reflI
@@ -231,7 +266,7 @@ subsetLt : {x,y : Value} -> x `Subset` y -> x :<=: y
 subsetLt {x = Bot} {y = y} f = Absurd
 subsetLt {x = (x |~> z)} {y = y} f with (f {u = _ |~> _} Refl)
   subsetLt {x = (x |~> z)} {y = y} f | with_pat = elemLt with_pat
-subsetLt {x = (x `U` z)} {y = y} f = Union (subsetLt \ t => f (Left t)) (subsetLt \ t => f (Right t))
+subsetLt {x = (x `U` z)} {y = y} f = Union (subsetLt $ \ t => f (Left t)) (subsetLt $ \ t => f (Right t))
 
 uSubsetInv : (u `U` v) `Subset` w -> (u `Subset` w, v `Subset` w)
 uSubsetInv f = (f . Left, f . Right)
@@ -254,6 +289,7 @@ allFuncs v = {u : _} -> u `Elem` v -> Func u
 notFuncBot : Not (Func Bot)
 notFuncBot MkFunc impossible
 
+public export
 allFuncsElem : {u : _} -> allFuncs u -> (v ** w ** v |~> w `Elem` u)
 allFuncsElem {u = Bot} f = absurd (notFuncBot (f Refl))
 allFuncsElem {u = (x |~> y)} f = MkDPair x (MkDPair y Refl)
@@ -279,7 +315,7 @@ domainContains {u = (z `U` s)} (Right x) y = Right (domainContains x y)
 containsCodomain : {u, v, w : _} -> u `Subset` v |~> w -> codomain u `Subset` w
 containsCodomain {u = Bot} f Refl = case f Refl of {}
 containsCodomain {u = (y |~> z)} f x with (f Refl)
-  containsCodomain {u = (v |~> w)} f x | Refl = x
+  containsCodomain {u = (y |~> z)} f x | Refl = x
 containsCodomain {u = (y `U` z)} f (Left x) = containsCodomain (f . Left) x
 containsCodomain {u = (y `U` z)} f (Right x) = containsCodomain (f . Right) x
 
@@ -316,4 +352,11 @@ subInv {u1 = (v1 |~> (w1 `U` w1'))} {u2 = ((v1 |~> w1) `U` (v1 |~> w1'))} Dist {
     triviality : Either (u = v1 |~> w1) (u = v1 |~> w1') -> Func u
     triviality (Left Refl) = MkFunc
     triviality (Right Refl) = MkFunc
+
+public export
+subInvFun : {v,w,u' : _} -> (v |~> w) :<=: u' ->
+  (u'' ** (u'' `Subset` u', allFuncs u'', {v', w' : _} -> (v' |~> w') `Elem` u'' -> v' :<=: v, w :<=: codomain u''))
+subInvFun abc with (subInv abc Refl)
+  subInvFun abc | (u'' ** (f, u''cu', ( db, cc )))
+    = (u'' ** (f, u''cu', \ m => subsetLt (domainContains m) `Trans` db, cc))
 

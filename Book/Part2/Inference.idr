@@ -308,7 +308,7 @@ synthTwoPlusTwoCh with (synthesize Empty (Inference.twoPlusTwoCh `App` Inference
   synthTwoPlusTwoCh | (No contra) = case contra (MkDPair MoreMul.Nat Inference.judgeTwoPlusTwoCh') of {}
 
 data IsNo : Dec a -> Type where
-  MkIsNo : IsNo (No contra)
+  MkIsNo : IsNo (No whyNot)
 
 plusS : TermS
 plusS = plus :! Nat ~> Nat ~> Nat

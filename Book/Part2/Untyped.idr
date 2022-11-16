@@ -42,13 +42,13 @@ ctxIsoNat : Iso Context Nat
 ctxIsoNat = MkIso fromCtx toCtx fromToCtx toFromCtx
 
 public export
-data Has : (0 _ : Context) -> (0 _ : LambdaType) -> Type where
-  Z : ctx :: a `Has` a
-  S : ctx `Has` a -> ctx :: b `Has` a
+data Has : (0 _ : Context) -> (_ : LambdaType) -> Type where
+  Z : {a : _} -> ctx :: a `Has` a
+  S : {a : _} -> ctx `Has` a -> ctx :: b `Has` a
 
 public export
-data (|-) : (0 _ : Context) -> (0 _ : LambdaType) -> Type where
-  Var : ctx `Has` a -> ctx |- a
+data (|-) : (0 _ : Context) -> (_ : LambdaType) -> Type where
+  Var : {a : _} -> ctx `Has` a -> ctx |- a
   Lam : ctx :: Star |- Star -> ctx |- Star
   App : ctx |- Star -> ctx |- Star -> ctx |- Star
 
@@ -82,38 +82,38 @@ twoPlusTwoCh : {ctx : Context} -> ctx |- Star
 twoPlusTwoCh = plusCh `App` twoCh `App` twoCh
 
 public export
-ext : ({0 a : LambdaType} -> ctx `Has` a -> ctx' `Has` a)
-   -> {0 a, b : LambdaType} -> ctx :: b `Has` a -> ctx' :: b `Has` a
+ext : ({a : LambdaType} -> ctx `Has` a -> ctx' `Has` a)
+   -> {a, b : LambdaType} -> ctx :: b `Has` a -> ctx' :: b `Has` a
 ext f Z = Z
 ext f (S x) = S (f x)
 
 public export
-rename : ({0 a : LambdaType} -> ctx `Has` a -> ctx' `Has` a)
-      -> {0 a : LambdaType} -> ctx |- a -> ctx' |- a
+rename : ({a : LambdaType} -> ctx `Has` a -> ctx' `Has` a)
+      -> {a : LambdaType} -> ctx |- a -> ctx' |- a
 rename f (Var x) = Var (f x)
 rename f (Lam x) = Lam (rename (ext f) x)
 rename f (x `App` y) = rename f x `App` rename f y
 
 public export
-exts : ({0 a : LambdaType} -> ctx `Has` a -> ctx' |- a)
-    -> {0 a, b : LambdaType} -> ctx :: b `Has` a -> ctx' :: b |- a
+exts : ({a : LambdaType} -> ctx `Has` a -> ctx' |- a)
+    -> {a, b : LambdaType} -> ctx :: b `Has` a -> ctx' :: b |- a
 exts f Z = Var Z
 exts f (S x) = rename S (f x)
 
 public export
-subst : ({0 a : LambdaType} -> ctx `Has` a -> ctx' |- a)
-     -> {0 a : LambdaType} -> ctx |- a -> ctx' |- a
+subst : ({a : LambdaType} -> ctx `Has` a -> ctx' |- a)
+     -> {a : LambdaType} -> ctx |- a -> ctx' |- a
 subst f (Var x) = f x
 subst f (Lam x) = Lam (subst (exts f) x)
 subst f (x `App` y) = subst f x `App` subst f y
 
 public export
-substZero : (m : ctx |- b) -> (ctx :: b `Has` a) -> ctx |- a
+substZero : {a : _} -> (m : ctx |- b) -> (ctx :: b `Has` a) -> ctx |- a
 substZero x Z = x
 substZero x (S y) = Var y
 
 public export
-replace : ctx :: b |- a -> ctx |- b -> ctx |- a
+replace : {a : _} -> ctx :: b |- a -> ctx |- b -> ctx |- a
 replace x y = subst (substZero y) x
 
 mutual

@@ -4,11 +4,7 @@ import Book.Part1.Relations
 import Data.Nat
 import Book.Part1.Naturals
 import Book.Part1.Induction
--- import Control.Function.FunExt
-
-public export
-interface FunExt where
-  funExt : {0 b : a -> Type} -> {0 f, g : (x : a) -> b x} -> ((x : a) -> f x = g x) -> f = g
+import Control.Function.FunExt
 
 etaTimes : (w : (a, b)) -> (fst w, snd w) = w
 etaTimes (_, _) = Refl

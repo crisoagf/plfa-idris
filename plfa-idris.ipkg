@@ -2,3 +2,35 @@ package plfa-idris
 version = 0.0.1
 
 depends = contrib, base
+modules
+  = Book.Part1.Naturals
+  , Book.Part1.Induction
+  , Book.Part1.Relations
+  -- , Book.Part1.Equality
+  , Book.Part1.Isomorphism
+  , Book.Part1.Connectives
+  , Book.Part1.Negation
+  , Book.Part1.Quantifiers
+  , Book.Part1.Decidable
+  , Book.Part1.Lists
+  , Book.Part2.Lambda
+  , Book.Part2.Properties
+  , Book.Part2.Properties2
+  , Book.Part2.DeBruijn
+  --, Book.Part2.More
+  , Book.Part2.MoreMul
+  , Book.Part2.MorePrim
+  , Book.Part2.MoreSum
+  , Book.Part2.MoreVoid
+  , Book.Part2.Bisimulation
+  , Book.Part2.Inference
+  , Book.Part2.Untyped
+  , Book.Part2.Confluence
+  , Book.Part2.BigStep
+  , Book.Part3.Denotational
+  , Book.Part3.Compositional
+  , Book.Part3.Soundness
+  , Book.Part3.Soundness2
+  , Book.Part3.Adequacy
+  --, Book.Part3.ContextualEquivalence
+  , Book.Appendix.Substitution

@@ -2,7 +2,7 @@ module Book.Part1.Lists
 import Book.Part1.Naturals
 import Book.Part1.Induction
 import Book.Part1.Isomorphism
-import Book.Part1.Quantifiers
+import Control.Function.FunExt
 import Data.List
 import Data.List.Quantifiers as Qs
 import Data.Nat
@@ -348,7 +348,7 @@ data Merge : {a : Type} -> (xs, ys, zs : List a) -> Type where
 split : {0 P : a -> Type} -> Decidable P -> (zs : List a)
      -> (xs : List a ** ys : List a ** (Merge xs ys zs, All P xs, All (Not . P) ys))
 split f [] = ([] ** [] ** (Empty, [], []))
-split f (z :: zs) with (split f zs)
+split f (z :: zs) with (Lists.split f zs)
   split f (z :: zs) | (xs ** (ys ** (merge, allxs, allys))) with (f z)
     split f (z :: zs) | (xs ** (ys ** (merge, allxs, allys))) | (Yes prf) = (z :: xs ** (ys ** (LeftMerge merge, prf :: allxs, allys)))
     split f (z :: zs) | (xs ** (ys ** (merge, allxs, allys))) | (No contra) = (xs ** (z :: ys ** (RightMerge merge, allxs, contra :: allys)))

@@ -1,26 +1,26 @@
 module Book.Appendix.Substitution
 
 import Book.Part2.Untyped
-import Book.Part1.Quantifiers
+import Control.Function.FunExt
 import Syntax.PreorderReasoning
 
 public export
 Rename : (0 ctx, ctx' : Context) -> Type
-Rename ctx ctx' = ({0 a : LambdaType} -> ctx `Has` a -> ctx' `Has` a)
+Rename ctx ctx' = ({a : LambdaType} -> ctx `Has` a -> ctx' `Has` a)
 
 public export
-Subst1 : (0 ctx, ctx' : Context) -> (0 a : LambdaType) -> Type
+Subst1 : (0 ctx, ctx' : Context) -> (a : LambdaType) -> Type
 Subst1 ctx ctx' a = ctx `Has` a -> ctx' |- a
 
 public export
 Subst : (0 ctx, ctx' : Context) -> Type
-Subst ctx ctx' = ({0 a : LambdaType} -> Subst1 ctx ctx' a)
+Subst ctx ctx' = ({a : LambdaType} -> Subst1 ctx ctx' a)
 
 public export
 ids : Subst ctx ctx
 ids x = Var x
 
-shift : {0 a : LambdaType} -> Subst ctx (ctx :: a)
+shift : {a : LambdaType} -> Subst ctx (ctx :: a)
 shift {a} x = Var (S x)
 
 public export
@@ -80,8 +80,8 @@ subApp = Refl
 
 congExt : FunExt
        => {rho, rho' : Rename _ _}
-       -> ({0 a : LambdaType} -> rho {a} = rho' {a})
-       -> {0 a : LambdaType} -> ext rho {b = b} = ext rho' {a}
+       -> ({a : LambdaType} -> rho {a} = rho' {a})
+       -> {a : LambdaType} -> ext rho {b = b} = ext rho' {a}
 congExt rr' = funExt lemma
   where lemma : (v : _) -> ext rho v = ext rho' v
         lemma Z = Refl
@@ -90,7 +90,7 @@ congExt rr' = funExt lemma
 
 congRename : FunExt
          => {rho, rho' : Rename _ _} -> {m : _}
-         -> ({0 a : LambdaType} -> rho {a} = rho' {a})
+         -> ({a : LambdaType} -> rho {a} = rho' {a})
          -> rename rho m = rename rho' m
 congRename {m = (Var x)} rr' = cong (Var . ($ x)) rr'
 congRename {m = (Lam x)} rr' = cong Lam (congRename $ congExt rr')
@@ -98,8 +98,8 @@ congRename {m = (x `App` y)} rr' = cong2 App (congRename rr') (congRename rr')
 
 congExts : FunExt
         => {sigma, sigma' : Subst _ _}
-        -> ({0 a : LambdaType} -> sigma {a} = sigma' {a})
-        -> {0 a : LambdaType} -> exts sigma = exts sigma' {a}
+        -> ({a : LambdaType} -> sigma {a} = sigma' {a})
+        -> {a : LambdaType} -> exts sigma = exts sigma' {a}
 congExts ss' = funExt lemma
   where lemma : (v : _) -> exts sigma v = exts sigma' v
         lemma Z = Refl
@@ -107,7 +107,7 @@ congExts ss' = funExt lemma
 
 congSub : FunExt
        => {sigma, sigma' : Subst _ _} -> {m, m' : _}
-       -> ({0 a : LambdaType} -> sigma {a} = sigma' {a})
+       -> ({a : LambdaType} -> sigma {a} = sigma' {a})
        -> m = m'
        -> subst sigma m = subst sigma' m'
 congSub {m = (Var x)} ss' Refl = cong ($ x) ss'
@@ -117,7 +117,7 @@ congSub {m = (x `App` y)} ss' Refl = cong2 App (congSub ss' Refl) (congSub ss' R
 congSubZero : FunExt
            => {m, m' : _}
            -> m = m'
-           -> {0 a : LambdaType} -> (substZero m = substZero m' {a})
+           -> {a : LambdaType} -> (substZero m = substZero m' {a})
 congSubZero Refl = funExt (\_ => Refl)
 
 congCons : FunExt
@@ -206,7 +206,7 @@ extsIds = funExt lemma
         lemma (S x) = Refl
 
 public export
-subId : FunExt => {m : _} -> subst Substitution.ids m = m
+subId : FunExt => {a : _} -> {m : _ |- a} -> subst Substitution.ids m = m
 subId {m = (Var x)} = Refl
 subId {m = (x `App` y)} = cong2 App subId subId
 subId {m = (Lam x)} = cong Lam $ congSub extsIds Refl `trans` subId
@@ -215,7 +215,7 @@ public export
 renameId : FunExt => {m : _} -> rename Basics.id m = m
 renameId = renameSubstRen `trans` subId
 
-subIdR : FunExt => {sigma : Subst _ _} -> (sigma `seq` Substitution.ids) = sigma
+subIdR : FunExt => {a : _} -> {sigma : Subst _ _} -> (sigma `seq` Substitution.ids) {a} = sigma
 subIdR = funExt (\ _ => subId)
 
 composeExt : FunExt
@@ -274,7 +274,8 @@ extsSeq = funExt lemma
 public export
 subSub
    : FunExt
-  => {sigma1 : Subst _ delta}
+  => {a : _}
+  -> {sigma1 : Subst _ delta}
   -> {sigma2 : Subst delta _}
   -> {m : ctx |- a}
   -> (subst sigma2 (subst sigma1 m)) = subst (sigma1 `seq` sigma2) m
@@ -291,11 +292,11 @@ subAssoc : FunExt
         => {sigma : Subst gamma delta}
         -> {tau : Subst delta epsilon}
         -> {theta : Subst epsilon zeta}
-        -> {0 a : LambdaType}
+        -> {a : LambdaType}
         -> ((sigma `seq` tau) `seq` theta) {a} = sigma `seq` (tau `seq` theta)
 subAssoc = funExt lemma
   where
-    lemma : (v : _) -> ((sigma `seq` tau) `seq` theta) v = (sigma `seq` (tau `seq` theta)) v
+    lemma : (v : _) -> ((sigma `seq` tau) `seq` theta) {a} v = (sigma `seq` (tau `seq` theta)) v
     lemma _ = subSub
 
 public export
@@ -342,7 +343,7 @@ renameSubstCommute = Calc $
   ~~ subst (ren rho) (replace n m) ...(substCommute)
   ~~ rename rho (replace n m) ...(sym renameSubstRen)
 
-replaceSkip : (m : (ctx :: a) :: b |- c) -> (n : ctx |- a) -> ctx :: b |- c
+replaceSkip : {a,b,c : _} -> (m : (ctx :: a) :: b |- c) -> (n : ctx |- a) -> ctx :: b |- c
 replaceSkip m n = subst (exts (substZero n)) m
 
 public export

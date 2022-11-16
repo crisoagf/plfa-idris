@@ -2,29 +2,35 @@ module Book.Part2.BigStep
 
 import Book.Part2.Confluence
 import Book.Part2.Untyped
-import Book.Part1.Quantifiers
 import Book.Appendix.Substitution
+import Control.Function.FunExt
 
+public export
 ClosEnv : Context -> Type
 
+public export
 data Clos : Type where
   MkClos : {ctx : Context} -> (m : ctx |- Star) -> ClosEnv ctx -> Clos
 
 ClosEnv ctx = (x : ctx `Has` Star) -> Clos
 
+public export
 Empty : ClosEnv Empty
 Empty x impossible
 
+public export
 (::) : {ctx : Context} -> ClosEnv ctx -> Clos -> ClosEnv (ctx :: Star)
 (::) f y Z = y
 (::) f y (S x) = f x
 
+public export
 data (|-) : ClosEnv ctx -> (ctx |- Star, Clos) -> Type where
   CVar : {x : _} -> {ctx : _} -> {m : ctx |- _} -> {env' : _} -> env x = MkClos {ctx} m env' -> env' |- (m, clos) -> env |- (Var x, clos)
   CLam : env |- (Lam m, MkClos (Lam m) env)
   CApp : {ctx : _} -> {ctx' : _} -> {env : ClosEnv ctx} -> {l, m : _} -> {n : ctx' :: Star |- Star} -> {env' : ClosEnv ctx'} -> env |- (l, MkClos (Lam n) env') -> (env' :: MkClos m env) |- (n, clos)
       -> env |- (l `App` m, clos)
 
+public export
 bigStepDet : env |- (m, clos) -> env |- (m, clos') -> clos = clos'
 bigStepDet (CVar prf x) (CVar prf1 y) with (sym prf `trans` prf1)
   bigStepDet (CVar prf x) (CVar prf1 y) | Refl = bigStepDet x y
@@ -79,6 +85,7 @@ closureReduces {m = l `App` r} (CApp {n} x y) f with (closureReduces {sigma} x f
             let g = appLCong z >> rs in MkDPair n' (g, u)
 
 
+public export
 cbnReduce : FunExt
   => {m : Empty |- Star}
   -> {ctx : _}

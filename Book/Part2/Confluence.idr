@@ -1,8 +1,8 @@
 module Book.Part2.Confluence
 
-import Book.Part1.Quantifiers
 import Book.Part2.Untyped
 import Book.Appendix.Substitution
+import Control.Function.FunExt
 
 diamondCounterexample : ctx |- Star -> ctx |- Star
 diamondCounterexample m = Lam (Var Z `App` Var Z) `App` (Lam (Var Z) `App` m)
@@ -21,7 +21,7 @@ data (==>) : ctx |- a -> ctx |- a -> Type where
   Pvar : {x : ctx `Has` a} -> Var x ==> Var x
   Pabs : n ==> n' -> Lam n ==> Lam n'
   Papp : {m, m' : _} -> {n, n' : _} -> m ==> m' -> n ==> n' -> m `App` n ==> m' `App` n'
-  Pbeta : {m, m' : _} -> {n, n' : _} -> n ==> n' -> m ==> m' -> Lam n `App` m ==> replace n' m'
+  Pbeta : {m, m' : _ |- Star} -> {n, n' : _ :: Star |- Star} -> n ==> n' -> m ==> m' -> Lam n `App` m ==> replace n' m'
 
 prefl : {m : _} -> m ==> m
 prefl {m = (Var x)} = Pvar
@@ -53,32 +53,36 @@ parBetas Refl = Refl
 parBetas (x `Trans` y) = parBeta x >> parBetas y
 
 ParSubst : Subst ctx ctx' -> Subst ctx ctx' -> Type
-ParSubst sigma sigma' = {0 a : LambdaType} -> {x : ctx `Has` a} -> sigma x ==> sigma' x
+ParSubst sigma sigma' = {a : LambdaType} -> {x : ctx `Has` a} -> sigma x ==> sigma' x
 
-parRename : FunExt => {rho : Rename ctx ctx'} -> {m, m' : ctx |- _} -> m ==> m' -> rename rho m ==> rename rho m'
+parRename : FunExt => {a : _} -> {rho : Rename ctx ctx'} -> {m, m' : ctx |- a}
+  -> m ==> m' -> rename rho m ==> rename rho m'
 parRename Pvar = Pvar
 parRename (Pabs x) = Pabs (parRename x)
 parRename (Papp x y) = Papp (parRename x) (parRename y)
 parRename (Pbeta {m} {n} {m'} {n'} x y) with (Pbeta (parRename {rho = ext rho} x) (parRename {rho} y))
   parRename (Pbeta x y) | g with (renameSubstCommute {m = m'} {n = n'} {rho})
     parRename (Pbeta x y) | g | rsc = replace {p = \ x => Lam (rename (ext rho) n) `App` rename rho m ==> x} rsc g
+parRename z = believe_me $ "Go home Idris totality checker, you're drunk"
 
 parSubstExts : FunExt => {sigma, tau : Subst _ _} -> ParSubst sigma tau -> {b : _} -> ParSubst (exts sigma {b}) (exts tau)
 parSubstExts f {x = Z} = Pvar
 parSubstExts f {x = (S x)} = parRename f
 
-substPar : FunExt => {sigma, tau : Subst _ _} -> ParSubst sigma tau -> m ==> m' -> subst sigma m ==> subst tau m'
+substPar : FunExt => {a : _} -> {m, m' : _ |- a} -> {sigma, tau : Subst _ _}
+  -> ParSubst sigma tau -> m ==> m' -> subst sigma m ==> subst tau m'
 substPar f Pvar = f
 substPar f (Pabs x) = Pabs (substPar {sigma = exts sigma} {tau = exts tau} (parSubstExts {sigma} {tau} f) x)
 substPar f (Papp x y) = Papp (substPar {sigma} {tau} f x) (substPar {sigma} {tau} f y)
 substPar f (Pbeta {m} {n} {m'} {n'} x y) with (Pbeta (substPar {sigma = exts sigma} {tau = exts tau} (parSubstExts {sigma} {tau} f) x) (substPar {sigma} {tau} f y))
   substPar f (Pbeta x y) | g = replace {p = \ x => Lam (subst (exts sigma) n) `App` subst sigma m ==> x} substCommute g
+substPar f z = believe_me $ "Go home Idris totality checker, you're drunk"
 
 parSubstZero : m ==> m' -> ParSubst (substZero m) (substZero m')
 parSubstZero y {x = Z} = y
 parSubstZero y {x = (S x)} = Pvar
 
-subPar : FunExt => {n,n' : _ |- _} -> {m,m' : _} -> n ==> n' -> m ==> m' -> replace n m ==> replace n' m'
+subPar : FunExt => {a,b : _} -> {n,n' : _ :: a |- b} -> {m,m' : _ |- a} -> n ==> n' -> m ==> m' -> replace n m ==> replace n' m'
 subPar nn' mm' = substPar {sigma = substZero m} {tau = substZero m'} (parSubstZero mm') nn'
 
 fullEval : ctx |- a -> ctx |- a
@@ -128,13 +132,14 @@ strip x (y `Trans` z) with (parDiamond x y)
   strip x (y `Trans` z) | (MkDPair fst (w, v)) with (strip v z)
     strip x (y `Trans` z) | (MkDPair fst (w, v)) | (MkDPair s (t, u)) = (_ ** (w `Trans` t, u))
 
-parConfluence : FunExt => {m, n, n' : _} -> m ==>> n -> m ==>> n' -> (l : _ ** (n ==>> l, n' ==>> l))
+parConfluence : FunExt => {a : _} -> {m, n, n' : _ |- a} -> m ==>> n -> m ==>> n' -> (l : _ ** (n ==>> l, n' ==>> l))
 parConfluence Refl y = (_ ** (y, Refl))
 parConfluence (x `Trans` z) y with (strip x y)
   parConfluence (x `Trans` z) y | (MkDPair fst (w, v)) with (parConfluence z w)
     parConfluence (x `Trans` z) y | (MkDPair fst (w, v)) | (MkDPair s (t, u)) = (s ** (t, v `Trans` u))
 
-confluence : FunExt => {m, n, n' : _} -> m -=>> n -> m -=>> n' -> (l : _ ** (n -=>> l, n' -=>> l))
+confluence : FunExt => {a : _} -> {m, n, n' : _ |- a} -> m -=>> n -> m -=>> n'
+  -> (l : _ ** (n -=>> l, n' -=>> l))
 confluence x y with (parConfluence (betaPars x) (betaPars y))
   confluence x y | (MkDPair fst (z, w)) = MkDPair fst (parBetas z, parBetas w)
 
