@@ -2,9 +2,7 @@ module Book.Part1.Relations
 import Data.Nat
 import Book.Part1.Naturals
 import Syntax.PreorderReasoning
-import Syntax.EqReasoning
 import Syntax.PreorderReasoning.Generic
-import Syntax.TransitiveReasoning
 
 data (<=) : Nat -> Nat -> Type where
   LtEZ : 0 <= m
@@ -113,7 +111,7 @@ plusLtMonoLeft {m} {n} p x = rewrite plusCommutative m p in
                              rewrite plusCommutative n p in plusLtMonoRight p x
 
 plusLtMono : {m, n, p, q : Nat} -> m < n -> p < q -> m + p < n + q
-plusLtMono x y = CalcWith' $
+plusLtMono x y = CalcKnown $
   |~ m + p
   <~ n + p ...(plusLtMonoLeft p x)
   <~ n + q ...(plusLtMonoRight n y)

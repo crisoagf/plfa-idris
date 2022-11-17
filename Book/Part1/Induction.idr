@@ -3,7 +3,6 @@ module Book.Part1.Induction
 import Book.Part1.Naturals as Nats
 import Data.Nat
 import Syntax.PreorderReasoning
-import Syntax.EqReasoning
 
 %default total
 

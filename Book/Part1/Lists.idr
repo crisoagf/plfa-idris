@@ -7,7 +7,6 @@ import Data.List
 import Data.List.Quantifiers as Qs
 import Data.Nat
 import Syntax.PreorderReasoning
-import Syntax.EqReasoning
 
 %default total
 
