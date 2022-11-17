@@ -32,5 +32,5 @@ modules
   , Book.Part3.Soundness
   , Book.Part3.Soundness2
   , Book.Part3.Adequacy
-  --, Book.Part3.ContextualEquivalence
+  , Book.Part3.ContextualEquivalence
   , Book.Appendix.Substitution

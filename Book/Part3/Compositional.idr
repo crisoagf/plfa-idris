@@ -116,19 +116,22 @@ appCong f g = ExplicitCalc {leq = (==)} trans $
   <~ Denote l' `App` Denote m' ...(AppCong f g)
   <~ Denote (l' `App` m') ...(sym appEquiv)
 
+public export
 data Ctx : Context -> Context -> Type where
   Hole : {ctx : _} -> Ctx ctx ctx
   Lam : {ctx, ctx' : _} -> Ctx (ctx :: Star) (ctx' :: Star) -> Ctx (ctx :: Star) ctx'
   AppL : {ctx, ctx' : _} -> Ctx ctx ctx' -> ctx' |- Star -> Ctx ctx ctx' 
   AppR : {ctx, ctx' : _} -> ctx' |- Star -> Ctx ctx ctx' -> Ctx ctx ctx' 
 
+public export
 plug : {0 ctx, ctx' : _} -> Ctx ctx ctx' -> ctx |- Star -> ctx' |- Star
 plug Hole y = y
 plug (Lam x) y = Lam (plug x y)
 plug (AppL x z) y = plug x y `App` z
 plug (AppR x z) y = x `App` plug z y
 
-compositionality : FunExt => {ctx, ctx' : _} -> {c : Ctx ctx ctx'} -> {m, n : ctx |- Star}
+public export
+compositionality : FunExt => {0 ctx, ctx' : _} -> {c : Ctx ctx ctx'} -> {m, n : ctx |- Star}
   -> Denote m == Denote n
   -> Denote (plug c m) == Denote (plug c n)
 compositionality {c = Hole} f = f

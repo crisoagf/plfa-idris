@@ -53,9 +53,12 @@ plusLtEMonoRight : (1 p : Nat) -> m <= n -> p + m <= p + n
 plusLtEMonoRight 0 x = x
 plusLtEMonoRight (S k) x = LtES (plusLtEMonoRight k x)
 
-plusLtEMonoLeft : {0 m, n : Nat} -> (p : Nat) -> m <= n -> m + p <= n + p
-plusLtEMonoLeft {m} {n} p x = rewrite plusCommutative m p in
-                              rewrite plusCommutative n p in plusLtEMonoRight p x
+plusLtEMonoLeft : {m, n : Nat} -> (p : Nat) -> m <= n -> m + p <= n + p
+plusLtEMonoLeft {m} {n} p x = CalcWith $
+  |~ m + p
+  ~~ p + m ...(plusCommutative m p)
+  <~ p + n ...(plusLtEMonoRight p x)
+  ~~ n + p ...(plusCommutative p n)
 
 plusLtEMono : {m, n, p, q : Nat} -> m <= n -> p <= q -> m + p <= n + q
 plusLtEMono {m} {n} {p} {q} x y = CalcWith $
@@ -106,9 +109,12 @@ plusLtMonoRight : (1 p : Nat) -> m < n -> p + m < p + n
 plusLtMonoRight 0 x = x
 plusLtMonoRight (S k) x = LtS (plusLtMonoRight k x)
 
-plusLtMonoLeft : {0 m, n : Nat} -> (p : Nat) -> m < n -> m + p < n + p
-plusLtMonoLeft {m} {n} p x = rewrite plusCommutative m p in
-                             rewrite plusCommutative n p in plusLtMonoRight p x
+-- The tail needs to be <~ for CalcKnown to work
+plusLtMonoLeft : {m, n : Nat} -> (p : Nat) -> m < n -> m + p < n + p
+plusLtMonoLeft {m} {n} p x = rewrite plusCommutative n p in CalcKnown $
+  |~ m + p
+  ~~ p + m ...(plusCommutative m p)
+  <~ p + n ...(plusLtMonoRight p x)
 
 plusLtMono : {m, n, p, q : Nat} -> m < n -> p < q -> m + p < n + q
 plusLtMono x y = CalcKnown $

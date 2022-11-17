@@ -169,6 +169,7 @@ judgeE {v=v1 `U` v2} gEnvClosEnv (UIntro x y) fEnvX with (aboveFunDec v1, aboveF
 judgeE gEnvClosEnv (Sub {v = w} x y) fEnvX with (judgeE gEnvClosEnv x (aboveFunLt fEnvX y))
   judgeE gEnvClosEnv (Sub {v = w} x y) fEnvX | (c ** (mc, vw)) = (c ** (mc, subV vw y))
 
+public export
 denoteImpliesJudge : {m : Empty |- Star} -> {n : Empty :: Star |- Star} -> Denote m == Denote (Lam n)
   -> (ctx : _ ** n' : (ctx :: Star |- Star) ** closEnv : ClosEnv ctx ** (Empty |- (m, MkClos (Lam n') closEnv)))
 denoteImpliesJudge eq with (judgeE GEmpty ((snd (eq Empty (Bot |~> Bot))) (FunIntro BotIntro)) (Bot ** Bot ** reflexive))
