@@ -109,15 +109,16 @@ plusLtMonoRight : (1 p : Nat) -> m < n -> p + m < p + n
 plusLtMonoRight 0 x = x
 plusLtMonoRight (S k) x = LtS (plusLtMonoRight k x)
 
--- The tail needs to be <~ for CalcKnown to work
+-- The tail needs to be <~ for CalcSmart to work
 plusLtMonoLeft : {m, n : Nat} -> (p : Nat) -> m < n -> m + p < n + p
-plusLtMonoLeft {m} {n} p x = rewrite plusCommutative n p in CalcKnown $
+plusLtMonoLeft {m} {n} p x = CalcSmart {leq = (<)} $
   |~ m + p
   ~~ p + m ...(plusCommutative m p)
   <~ p + n ...(plusLtMonoRight p x)
+  ~~ n + p ...(plusCommutative p n)
 
 plusLtMono : {m, n, p, q : Nat} -> m < n -> p < q -> m + p < n + q
-plusLtMono x y = CalcKnown $
+plusLtMono x y = CalcSmart $
   |~ m + p
   <~ n + p ...(plusLtMonoLeft p x)
   <~ n + q ...(plusLtMonoRight n y)

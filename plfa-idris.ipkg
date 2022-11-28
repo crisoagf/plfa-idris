@@ -6,7 +6,7 @@ modules
   = Book.Part1.Naturals
   , Book.Part1.Induction
   , Book.Part1.Relations
-  -- , Book.Part1.Equality
+  , Book.Part1.Equality
   , Book.Part1.Isomorphism
   , Book.Part1.Connectives
   , Book.Part1.Negation

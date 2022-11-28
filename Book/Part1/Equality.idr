@@ -55,7 +55,7 @@ failing
       transitive = trans''
     
     trans'' : {x,y,z : _} -> x `Eq` y -> y `Eq` z -> x `Eq` z
-    trans'' xy yz = CalcKnown $
+    trans'' xy yz = CalcSmart $
       |~ x
       <~ y ... xy
       <~ z ... yz
@@ -70,11 +70,11 @@ fromBuiltin : a = b -> a `Eq` b
 fromBuiltin Refl = Refl
 
 plusComm : (m, n : Nat) -> m + n `Eq` n + m
-plusComm m Z = CalcKnown $
+plusComm m Z = CalcSmart {leq = Eq} $
   |~ m + 0
   <~ m     ...(fromBuiltin $ plusZeroRightNeutral m)
   ~= 0 + m
-plusComm m (S k) = CalcKnown $
+plusComm m (S k) = CalcSmart $
   |~ m + S k
   <~ S (m + k) ...(sym $ fromBuiltin $ plusSuccRightSucc m k)
   <~ S (k + m) ...(cong S (plusComm m k))
@@ -84,3 +84,26 @@ plusComm m (S k) = CalcKnown $
 
 -- Skipped rewriting
 
+LeibEq : {a : Type} -> (x, y : a) -> Type
+LeibEq x y = (p : a -> Type) -> p x -> p y
+
+[leibRefl] Reflexive a LeibEq where
+  reflexive _ px = px
+
+[leibTrans] Transitive a LeibEq where
+  transitive xLEqY yLEqZ p px = yLEqZ p (xLEqY p px)
+
+[leibSym] Symmetric a LeibEq where
+  symmetric xLEqY p py = xLEqY (\ x0 => p x0 -> p x) (\z => z) py
+
+eqImpliesLeibEq : a `Eq` b -> a `LeibEq` b
+eqImpliesLeibEq xEqY p = subst p xEqY
+
+-- Eq only has one constructor, so we can erase it at runtime
+irrelevantEq : (0 prf : a `Eq` b) -> a `Eq` b
+irrelevantEq Refl = Refl
+
+leibEqImpliesEq : a `LeibEq` b -> a `Eq` b
+leibEqImpliesEq xLEqY = irrelevantEq $ xLEqY (a `Eq`) Refl
+
+-- Universe polymorphism isn't applicable to Idris, everything is universe polymorphic
