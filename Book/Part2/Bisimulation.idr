@@ -4,7 +4,6 @@ import Book.Part2.MorePrim
 
 %default total
 
-infix 4 ~~
 infix 4 ~*~
 
 data (~~) : (ctx |- a) -> (ctx |- a) -> Type where
@@ -44,7 +43,7 @@ congExts
   :  {f  : {0 a : LambdaType} -> ctx `Has` a -> ctx' |- a}
   -> {f' : {0 a : LambdaType} -> ctx `Has` a -> ctx' |- a}
   -> ({0 a : LambdaType} -> (x : ctx `Has` a) -> f x ~~ f' x)
-  -> (x : ctx :: b `Has` a) -> exts f x ~~ exts f' x
+  -> (x : ctx :< b `Has` a) -> exts f x ~~ exts f' x
 congExts g Z = VarEq
 congExts g (S x) = congRename S (g x)
 
@@ -58,7 +57,7 @@ congSubst g (LamEq x) = LamEq (congSubst (congExts g) x)
 congSubst f (AppEq x y) = AppEq (congSubst f x) (congSubst f y)
 congSubst f (LetEq x y) = LetEq (congSubst f x) (congSubst (congExts f) y)
   
-congReplace : {n, n' : ctx :: b |- a} -> {m, m' : ctx |- b} -> n ~~ n' -> m ~~ m' -> replace n m ~~ replace n' m'
+congReplace : {n, n' : ctx :< b |- a} -> {m, m' : ctx |- b} -> n ~~ n' -> m ~~ m' -> replace n m ~~ replace n' m'
 congReplace x y = congSubst (\ x => case x of { Z => y ; S z => VarEq }) x
 
 data LockLeg : (m', n : ctx |- a) -> Type where

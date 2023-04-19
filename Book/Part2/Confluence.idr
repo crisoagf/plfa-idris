@@ -21,7 +21,7 @@ data (==>) : ctx |- a -> ctx |- a -> Type where
   Pvar : {x : ctx `Has` a} -> Var x ==> Var x
   Pabs : n ==> n' -> Lam n ==> Lam n'
   Papp : {m, m' : _} -> {n, n' : _} -> m ==> m' -> n ==> n' -> m `App` n ==> m' `App` n'
-  Pbeta : {m, m' : _ |- Star} -> {n, n' : _ :: Star |- Star} -> n ==> n' -> m ==> m' -> Lam n `App` m ==> replace n' m'
+  Pbeta : {m, m' : _ |- Star} -> {n, n' : _ :< Star |- Star} -> n ==> n' -> m ==> m' -> Lam n `App` m ==> replace n' m'
 
 prefl : {m : _} -> m ==> m
 prefl {m = (Var x)} = Pvar
@@ -82,7 +82,7 @@ parSubstZero : m ==> m' -> ParSubst (substZero m) (substZero m')
 parSubstZero y {x = Z} = y
 parSubstZero y {x = (S x)} = Pvar
 
-subPar : FunExt => {a,b : _} -> {n,n' : _ :: a |- b} -> {m,m' : _ |- a} -> n ==> n' -> m ==> m' -> replace n m ==> replace n' m'
+subPar : FunExt => {a,b : _} -> {n,n' : _ :< a |- b} -> {m,m' : _ |- a} -> n ==> n' -> m ==> m' -> replace n m ==> replace n' m'
 subPar nn' mm' = substPar {sigma = substZero m} {tau = substZero m'} (parSubstZero mm') nn'
 
 fullEval : ctx |- a -> ctx |- a

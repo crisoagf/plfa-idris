@@ -11,10 +11,9 @@ data Value = Bot | (|~>) Value Value | U Value Value
 
 infix 4 :<=:
 infix 4 :<<=:
-infixl 5 `U`
-infix 5 `uEnv`
-infixr 7 |~>
-infixl 5 ::
+infixl 8 `U`
+infix 8 `uEnv`
+infixr 10 |~>
 
 public export
 data (:<=:) : Value -> Value -> Type where
@@ -64,22 +63,22 @@ Empty : Env Empty
 Empty x impossible
 
 public export
-(::) : Env ctx -> Value -> Env (ctx :: Star)
-(::) f y Z = y
-(::) f y (S x) = f x
+(:<) : Env ctx -> Value -> Env (ctx :< Star)
+(:<) f y Z = y
+(:<) f y (S x) = f x
 
 public export
-init : Env (ctx :: Star) -> Env ctx
+init : Env (ctx :< Star) -> Env ctx
 init f x = f (S x)
 
 public export
-last : Env (ctx :: Star) -> Value
+last : Env (ctx :< Star) -> Value
 last f = f Z
 
 public export
-initLast : FunExt => (env : Env (ctx :: Star)) -> env = init env :: last env
+initLast : FunExt => (env : Env (ctx :< Star)) -> env = init env :< last env
 initLast env = funExt lemma
-  where lemma : (x : _) -> env x = (init env :: last env) x
+  where lemma : (x : _) -> env x = (init env :< last env) x
         lemma Z = Refl
         lemma (S x) = Refl
 
@@ -111,7 +110,7 @@ public export
 data (|-) : Env ctx -> (ctx |- Star, Value) -> Type where
   Var : {x : _} -> env |- (Var x, env x)
   FunElim : {v : _} -> env |- (l, v |~> w) -> env |- (m, v) -> env |- (App l m, w)
-  FunIntro : {v : _} -> env :: v |- (n, w) -> env |- (Lam n, v |~> w)
+  FunIntro : {v : _} -> env :< v |- (n, w) -> env |- (Lam n, v |~> w)
   BotIntro : env |- (m, Bot)
   UIntro : env |- (m, v) -> env |- (m, w) -> env |- (m, v `U` w)
   Sub : {v : _} -> env |- (m, v) -> w :<=: v -> env |- (m, w)
@@ -181,7 +180,7 @@ trans f g env v with (f env v)
     trans f g env v | (m1m2,m2m1) | (m2m3,m3m2) = (m2m3 . m1m2, m2m1 . m3m2)
 
 ext : {0 env : Env ctx} -> {env' : Env ctx'} -> {v : _} -> (rho : Rename ctx ctx')
-  -> env :<<=: (env' . rho) -> (env :: v) :<<=: ((env' :: v) . ext rho)
+  -> env :<<=: (env' . rho) -> (env :< v) :<<=: ((env' :< v) . ext rho)
 ext rho f Z = reflI
 ext rho f (S x) = f x
 
@@ -203,24 +202,24 @@ ltEnv x f with (renamePres (\ x => x) f x)
 
 public export
 upEnv : FunExt
-     => {env : _} -> {u2 : _} -> (env :: u1) |- (m, v) -> u1 :<=: u2 -> (env :: u2) |- (m, v)
+     => {env : _} -> {u2 : _} -> (env :< u1) |- (m, v) -> u1 :<=: u2 -> (env :< u2) |- (m, v)
 upEnv x y = ltEnv x (extLe y)
-  where extLe : u1 :<=: u2 -> (env :: u1) :<<=: (env :: u2)
+  where extLe : u1 :<=: u2 -> (env :< u1) :<<=: (env :< u2)
         extLe y Z = y
         extLe y (S x) = reflI
 
 dsuc : Vect (S n) Value -> Value
 dsuc (a :: []) = Bot
-dsuc (ask :: (ak :: ls)) = ak |~> ask `U` dsuc (ak :: ls)
+dsuc (ask :: ak :: ls) = ak |~> ask `U` dsuc (ak :: ls)
 
 vecLast : Vect (S n) Value -> Value
 vecLast (a :: []) = a
-vecLast (a :: (b :: bs)) = vecLast (b :: bs)
+vecLast (a :: b :: bs) = vecLast (b :: bs)
 
 dCh : Vect (S n) Value -> Value
 dCh (an :: ls) = dsuc (an :: ls) |~> vecLast (an :: ls) |~> an
 
-applyN : (n : Nat) -> Empty :: Star :: Star |- Star
+applyN : (n : Nat) -> Empty :< Star :< Star |- Star
 applyN 0 = var 0
 applyN (S n) = var 1 `App` applyN n
 
@@ -229,11 +228,11 @@ church n = Lam (Lam (applyN n))
 
 denotApplyN
   : FunExt
-  => (x : Value) -> (xs : Vect n Value) -> ((Empty :: dsuc (x :: xs)) :: vecLast (x :: xs)) |- (applyN n, x)
+  => (x : Value) -> (xs : Vect n Value) -> Empty :< dsuc (x :: xs) :< vecLast (x :: xs) |- (applyN n, x)
 denotApplyN x [] = Var
 denotApplyN x (y :: xs) with (denotApplyN y xs)
   denotApplyN x (y :: xs) | denotTail = FunElim (Sub Var (Inj1 reflI)) (ltEnv denotTail lemma)
-    where lemma : (Empty :: dsuc (y :: xs) :: vecLast (y :: xs)) :<<=: (Empty :: ((y |~> x) `U` dsuc (y :: xs)) :: vecLast (y :: xs))
+    where lemma : Empty :< dsuc (y :: xs) :< vecLast (y :: xs) :<<=: Empty :< y |~> x `U` dsuc (y :: xs) :< vecLast (y :: xs)
           lemma Z = reflI
           lemma (S Z) = Inj2 reflI
 

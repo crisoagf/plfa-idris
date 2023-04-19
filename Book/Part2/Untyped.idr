@@ -5,10 +5,8 @@ import Data.Nat
 %default total
 
 infix 4 |-
-infixl 5 ::
 infixl 7 `App`
 infixl 7 `AppN`
-infixl 7 >>
 
 public export
 data LambdaType : Type where
@@ -20,19 +18,19 @@ typeIsoUnit = MkIso (\ Star => ()) (\ () => Star) (\ Star => Refl) (\ () => Refl
 public export
 data Context : Type where
   Empty : Context
-  (::) : Context -> LambdaType -> Context
+  (:<) : Context -> LambdaType -> Context
 
 fromCtx : Context -> Nat
 fromCtx Empty = 0
-fromCtx (x :: Star) = S (fromCtx x)
+fromCtx (x :< Star) = S (fromCtx x)
 
 toCtx : Nat -> Context
 toCtx 0 = Empty
-toCtx (S k) = toCtx k :: Star
+toCtx (S k) = toCtx k :< Star
 
 fromToCtx : (x : Context) -> toCtx (fromCtx x) = x
 fromToCtx Empty = Refl
-fromToCtx (x :: Star) = rewrite fromToCtx x in Refl
+fromToCtx (x :< Star) = rewrite fromToCtx x in Refl
 
 toFromCtx : (y : Nat) -> fromCtx (toCtx y) = y
 toFromCtx 0 = Refl
@@ -43,25 +41,25 @@ ctxIsoNat = MkIso fromCtx toCtx fromToCtx toFromCtx
 
 public export
 data Has : (0 _ : Context) -> (_ : LambdaType) -> Type where
-  Z : {a : _} -> ctx :: a `Has` a
-  S : {a : _} -> ctx `Has` a -> ctx :: b `Has` a
+  Z : {a : _} -> ctx :< a `Has` a
+  S : {a : _} -> ctx `Has` a -> ctx :< b `Has` a
 
 public export
 data (|-) : (0 _ : Context) -> (_ : LambdaType) -> Type where
   Var : {a : _} -> ctx `Has` a -> ctx |- a
-  Lam : ctx :: Star |- Star -> ctx |- Star
+  Lam : ctx :< Star |- Star -> ctx |- Star
   App : ctx |- Star -> ctx |- Star -> ctx |- Star
 
 public export
 length : Context -> Nat
 length Empty = 0
-length (x :: y) = S (length x)
+length (x :< y) = S (length x)
 
 public export
 va : {ctx : Context} -> (n : Nat) -> {auto l : length ctx `GT` n} -> ctx `Has` Star
 va {ctx = Empty} n {l = l} impossible
-va {ctx = (x :: Star)} 0 {l = (LTESucc z)} = Z
-va {ctx = (x :: Star)} (S k) {l = (LTESucc z)} = S (va k)
+va {ctx = (x :< Star)} 0 {l = (LTESucc z)} = Z
+va {ctx = (x :< Star)} (S k) {l = (LTESucc z)} = S (va k)
 
 public export
 var : {ctx : Context} -> (n : Nat) -> {auto l : length ctx `GT` n} -> ctx |- Star
@@ -83,7 +81,7 @@ twoPlusTwoCh = plusCh `App` twoCh `App` twoCh
 
 public export
 ext : ({a : LambdaType} -> ctx `Has` a -> ctx' `Has` a)
-   -> {a, b : LambdaType} -> ctx :: b `Has` a -> ctx' :: b `Has` a
+   -> {a, b : LambdaType} -> ctx :< b `Has` a -> ctx' :< b `Has` a
 ext f Z = Z
 ext f (S x) = S (f x)
 
@@ -96,7 +94,7 @@ rename f (x `App` y) = rename f x `App` rename f y
 
 public export
 exts : ({a : LambdaType} -> ctx `Has` a -> ctx' |- a)
-    -> {a, b : LambdaType} -> ctx :: b `Has` a -> ctx' :: b |- a
+    -> {a, b : LambdaType} -> ctx :< b `Has` a -> ctx' :< b |- a
 exts f Z = Var Z
 exts f (S x) = rename S (f x)
 
@@ -108,12 +106,12 @@ subst f (Lam x) = Lam (subst (exts f) x)
 subst f (x `App` y) = subst f x `App` subst f y
 
 public export
-substZero : {a : _} -> (m : ctx |- b) -> (ctx :: b `Has` a) -> ctx |- a
+substZero : {a : _} -> (m : ctx |- b) -> (ctx :< b `Has` a) -> ctx |- a
 substZero x Z = x
 substZero x (S y) = Var y
 
 public export
-replace : {a : _} -> ctx :: b |- a -> ctx |- b -> ctx |- a
+replace : {a : _} -> ctx :< b |- a -> ctx |- b -> ctx |- a
 replace x y = subst (substZero y) x
 
 mutual
@@ -254,13 +252,13 @@ zeroSc = Lam . Lam $ var 0
 sucSc : {ctx : Context} -> ctx |- Star -> ctx |- Star
 sucSc m = (Lam . Lam . Lam $ var 1 `App` var 2) `App` m
 
-caseSc : {ctx : Context} -> ctx |- Star -> ctx |- Star -> ctx :: Star |- Star -> ctx |- Star
+caseSc : {ctx : Context} -> ctx |- Star -> ctx |- Star -> ctx :< Star |- Star -> ctx |- Star
 caseSc x y z = x `App` Lam z `App` y
 
 test1 : eval 100 (Untyped.sucSc Untyped.zeroSc) = MkDPair (Lam (Lam (Var (S Z) `App` Lam (Lam (Var Z))))) (ReduceStep BetaLam (Finished (LamN (LamN (NeutralN (VarN (S Z) `AppN` LamN (LamN (NeutralN (VarN Z)))))))))
 test1 = Refl
 
-fix : {ctx : Context} -> ctx :: Star |- Star -> ctx |- Star
+fix : {ctx : Context} -> ctx :< Star |- Star -> ctx |- Star
 fix m = Lam ((Lam (var 1 `App` (var 0 `App` var 0))) `App` (Lam (var 1 `App` (var 0 `App` var 0)))) `App` Lam m
 
 two : {ctx : Context} -> ctx |- Star
@@ -299,7 +297,5 @@ lamCong (x `Trans` y) = IntroLam x `Trans` lamCong y
 public export
 (>>) : l -=>> m -> m -=>> n -> l -=>> n
 (>>) Refl x = x
-(>>) (y `Trans` z) x = y `Trans` z >> x
-
--- Monoid (m -=>> n) where
+(>>) (y `Trans` z) x = y `Trans` (z >> x)
 

@@ -19,15 +19,15 @@ Empty : ClosEnv Empty
 Empty x impossible
 
 public export
-(::) : {ctx : Context} -> ClosEnv ctx -> Clos -> ClosEnv (ctx :: Star)
-(::) f y Z = y
-(::) f y (S x) = f x
+(:<) : {ctx : Context} -> ClosEnv ctx -> Clos -> ClosEnv (ctx :< Star)
+(:<) f y Z = y
+(:<) f y (S x) = f x
 
 public export
 data (|-) : ClosEnv ctx -> (ctx |- Star, Clos) -> Type where
   CVar : {x : _} -> {ctx : _} -> {m : ctx |- _} -> {env' : _} -> env x = MkClos {ctx} m env' -> env' |- (m, clos) -> env |- (Var x, clos)
   CLam : env |- (Lam m, MkClos (Lam m) env)
-  CApp : {ctx : _} -> {ctx' : _} -> {env : ClosEnv ctx} -> {l, m : _} -> {n : ctx' :: Star |- Star} -> {env' : ClosEnv ctx'} -> env |- (l, MkClos (Lam n) env') -> (env' :: MkClos m env) |- (n, clos)
+  CApp : {ctx : _} -> {ctx' : _} -> {env : ClosEnv ctx} -> {l, m : _} -> {n : ctx' :< Star |- Star} -> {env' : ClosEnv ctx'} -> env |- (l, MkClos (Lam n) env') -> (env' :< MkClos m env) |- (n, clos)
       -> env |- (l `App` m, clos)
 
 public export
@@ -47,7 +47,7 @@ env `EnvFor` sigma = {x : _} -> env x `Closes` sigma x
 envId : Empty `EnvFor` Substitution.ids
 envId impossible
 
-extSubst : Subst ctx ctx' -> ctx' |- Star -> Subst (ctx :: Star) ctx'
+extSubst : Subst ctx ctx' -> ctx' |- Star -> Subst (ctx :< Star) ctx'
 extSubst sigma n = subst (substZero n) . exts sigma
 
 substZeroExts : FunExt
@@ -55,7 +55,7 @@ substZeroExts : FunExt
 substZeroExts = cong (\ f => f (S x)) (substZeroExtsCons {sigma} {m})
 
 envExt : FunExt => {sigma : Subst ctx Empty}
-   -> env `EnvFor` sigma -> clos `Closes` n -> (env :: clos) `EnvFor` extSubst sigma n
+   -> env `EnvFor` sigma -> clos `Closes` n -> (env :< clos) `EnvFor` extSubst sigma n
 envExt f y {x = Z} = y
 envExt f y {x = (S x)} = rewrite substZeroExts {sigma} {m = n} {x} in f
 
@@ -90,8 +90,8 @@ cbnReduce : FunExt
   => {m : Empty |- Star}
   -> {ctx : _}
   -> {env : ClosEnv ctx} 
-  -> {n' : ctx :: Star |- Star}
-  -> Empty |- (m, MkClos (Lam n') env) -> (n : (Empty :: Star |- Star) ** (m -=>> Lam n))
+  -> {n' : ctx :< Star |- Star}
+  -> Empty |- (m, MkClos (Lam n') env) -> (n : (Empty :< Star |- Star) ** (m -=>> Lam n))
 cbnReduce x with (closureReduces {sigma = ids} x envId)
   cbnReduce x | (MkDPair n (rs, (MkDPair sigma (h, eq2)))) =
     MkDPair (subst (exts sigma) n') (replace {p = \ n => m -=>> n} eq2 (replace {p = \ m => m -=>> n} (subId {m}) rs))

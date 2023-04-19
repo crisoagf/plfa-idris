@@ -12,14 +12,12 @@ Id = String
 
 infix 4 |-
 infix 4 |=
-infix 5 :::
-infixl 5 ::
+infix 5 :<:
 infixl 6 :!
-infixl 7 `App`
 
 data Context : Type where
   Empty : Context
-  (::) : Inference.Context -> (Id, LambdaType) -> Context
+  (:<) : Inference.Context -> (Id, LambdaType) -> Context
 
 data TermS : Type
 data TermI : Type
@@ -73,32 +71,32 @@ twoPlusTwoCh' : {a : LambdaType} -> TermS
 twoPlusTwoCh' = (chPlus :! Ch a ~> Ch a ~> Ch a) `App` chTwo `App` chTwo
 
 data Has : Inference.Context -> (Id, LambdaType) -> Type where
-  Z : ctx :: (x, a) `Has` (x, a)
-  S : Not (x = y) -> ctx `Has` (x, a) -> ctx :: (y, b) `Has` (x, a)
+  Z : ctx :< (x, a) `Has` (x, a)
+  S : Not (x = y) -> ctx `Has` (x, a) -> ctx :< (y, b) `Has` (x, a)
 
 record TypeQ a where
-  constructor (:::)
+  constructor (:<:)
   term : a
   type : LambdaType
 
 mutual
   data (|-) : Inference.Context -> TypeQ TermS -> Type where
-    JudgeVar : ctx `Has` (x,a) -> ctx |- (Var x ::: a)
-    JudgeApp : {a, b : _} -> ctx |- l ::: a ~> b -> ctx |= m ::: a -> ctx |- App l m ::: b
-    JudgePair : ctx |- x ::: a -> ctx |- y ::: b -> ctx |- Pair x y ::: a * b
-    JudgeAssert : ctx |= l ::: a -> ctx |- l :! a ::: a
+    JudgeVar : ctx `Has` (x,a) -> ctx |- (Var x :<: a)
+    JudgeApp : {a, b : _} -> ctx |- l :<: a ~> b -> ctx |= m :<: a -> ctx |- App l m :<: b
+    JudgePair : ctx |- x :<: a -> ctx |- y :<: b -> ctx |- Pair x y :<: a * b
+    JudgeAssert : ctx |= l :<: a -> ctx |- l :! a :<: a
   
   data (|=) : Inference.Context -> TypeQ TermI -> Type where
-    JudgeLam : ctx :: (x,a) |= n ::: b -> ctx |= Lam x n ::: a ~> b
-    JudgeZero : ctx |= Zero ::: Nat
-    JudgeSuc : ctx |= m ::: Nat -> ctx |= Suc m ::: Nat
-    JudgeCase : ctx |- l ::: Nat -> ctx |= m ::: a -> ctx :: (x, Nat) |= n ::: a
-             -> ctx |= Case l m x n ::: a
-    JudgeMu : ctx :: (x, a) |= n ::: a -> ctx |= Mu x n ::: a
-    JudgeProj1 : {a,b : _} -> ctx |- l ::: a * b -> ctx |= Proj1 l ::: a
-    JudgeProj2 : {a,b : _} -> ctx |- l ::: a * b -> ctx |= Proj2 l ::: b
-    JudgeCaseP : {a,b : _} -> ctx |- l ::: a * b -> ctx :: (x, a) :: (y, b) |= m ::: c -> ctx |= CaseP l x y m ::: c
-    JudgeInfer : ctx |- m ::: a -> a = b -> ctx |= Infer m ::: b
+    JudgeLam : ctx :< (x,a) |= n :<: b -> ctx |= Lam x n :<: a ~> b
+    JudgeZero : ctx |= Zero :<: Nat
+    JudgeSuc : ctx |= m :<: Nat -> ctx |= Suc m :<: Nat
+    JudgeCase : ctx |- l :<: Nat -> ctx |= m :<: a -> ctx :< (x, Nat) |= n :<: a
+             -> ctx |= Case l m x n :<: a
+    JudgeMu : ctx :< (x, a) |= n :<: a -> ctx |= Mu x n :<: a
+    JudgeProj1 : {a,b : _} -> ctx |- l :<: a * b -> ctx |= Proj1 l :<: a
+    JudgeProj2 : {a,b : _} -> ctx |- l :<: a * b -> ctx |= Proj2 l :<: b
+    JudgeCaseP : {a,b : _} -> ctx |- l :<: a * b -> ctx :< (x, a) :< (y, b) |= m :<: c -> ctx |= CaseP l x y m :<: c
+    JudgeInfer : ctx |- m :<: a -> a = b -> ctx |= Infer m :<: b
 
 
 mul : TermI
@@ -153,15 +151,15 @@ uniqHas' ext (S f x) (S g y) =
   rewrite uniqHas' ext x y in
     rewrite the (f = g) (ext (\ xEqy => absurd (f xEqy))) in Refl
 
-uniqSyn : ctx |- m ::: a -> ctx |- m ::: b -> a = b
+uniqSyn : ctx |- m :<: a -> ctx |- m :<: b -> a = b
 uniqSyn (JudgeVar x) (JudgeVar y) = rewrite uniqHas x y in Refl
 uniqSyn (JudgeApp x z) (JudgeApp y w) = rngEq (uniqSyn x y)
 uniqSyn (JudgePair x z) (JudgePair y w) = rewrite uniqSyn x y in rewrite uniqSyn z w in Refl
 uniqSyn (JudgeAssert x) (JudgeAssert y) = Refl
 
-uniqInh : {auto ext : Extensionality} -> (z, w : ctx |= (m ::: a)) -> z = w
-uniqSyn' : {auto ext : Extensionality} -> (x,y : ctx |- m ::: a) -> x = y
-uniqSyn'' : {auto ext : Extensionality} -> (x : ctx |- m ::: a) -> (y : ctx |- m ::: b) -> x ~=~ y
+uniqInh : {auto ext : Extensionality} -> (z, w : ctx |= (m :<: a)) -> z = w
+uniqSyn' : {auto ext : Extensionality} -> (x,y : ctx |- m :<: a) -> x = y
+uniqSyn'' : {auto ext : Extensionality} -> (x : ctx |- m :<: a) -> (y : ctx |- m :<: b) -> x ~=~ y
 
 uniqInh (JudgeLam x) (JudgeLam y) = rewrite uniqInh x y in Refl
 uniqInh JudgeZero JudgeZero = Refl
@@ -191,29 +189,29 @@ uniqSyn'' {a} {b} x y with (uniqSyn x y)
 
 extHas : Not (x = y)
       -> Not (a : LambdaType ** ctx `Has` (x,a))
-      -> Not (a : LambdaType ** ctx :: (y,b) `Has` (x, a))
+      -> Not (a : LambdaType ** ctx :< (y,b) `Has` (x, a))
 extHas f g (MkDPair b Z) = f Refl
 extHas f g (MkDPair fst (S f1 z)) = g (MkDPair fst z)
 
 lookup : (ctx : Inference.Context) -> (x : Id) -> Dec (a : _ ** ctx `Has` (x,a))
 lookup Empty _ = No (\ x => case snd x of {})
-lookup (y :: (z, w)) x with (decEq z x)
-  lookup (y :: (z, w)) z | (Yes Refl) = Yes (MkDPair w Z)
-  lookup (y :: (z, w)) x | (No contra) with (lookup y x)
-    lookup (y :: (z, w)) x | (No contra) | (Yes (MkDPair fst snd)) = Yes (MkDPair fst (S (\ x => contra (sym x)) snd))
-    lookup (y :: (z, w)) x | (No contra) | (No f) = No (\ (MkDPair fst snd) => case snd of
+lookup (y :< (z, w)) x with (decEq z x)
+  lookup (y :< (z, w)) z | (Yes Refl) = Yes (MkDPair w Z)
+  lookup (y :< (z, w)) x | (No contra) with (lookup y x)
+    lookup (y :< (z, w)) x | (No contra) | (Yes (MkDPair fst snd)) = Yes (MkDPair fst (S (\ x => contra (sym x)) snd))
+    lookup (y :< (z, w)) x | (No contra) | (No f) = No (\ (MkDPair fst snd) => case snd of
       Z => contra Refl
       (S g v) => f (MkDPair fst v)
       )
 
-notArg : ctx |- l ::: a ~> b -> Not (ctx |= m ::: a) -> Not (b' : _ ** ctx |- l `App` m ::: b')
+notArg : ctx |- l :<: a ~> b -> Not (ctx |= m :<: a) -> Not (b' : _ ** ctx |- l `App` m :<: b')
 notArg x f (MkDPair fst (JudgeApp y z)) = f (rewrite domEq (uniqSyn x y) in z)
 
-notSwitch : ctx |- m ::: a -> Not (a = b) -> Not (ctx |= (Infer m) ::: b)
+notSwitch : ctx |- m :<: a -> Not (a = b) -> Not (ctx |= (Infer m) :<: b)
 notSwitch x f (JudgeInfer y prf) = f (rewrite uniqSyn x y in prf)
 
-synthesize : (ctx : Inference.Context) -> (m : TermS) -> Dec (a : _ ** ctx |- m ::: a)
-inherit : (ctx : Inference.Context) -> (m : TermI) -> (a : LambdaType) -> Dec (ctx |= m ::: a)
+synthesize : (ctx : Inference.Context) -> (m : TermS) -> Dec (a : _ ** ctx |- m :<: a)
+inherit : (ctx : Inference.Context) -> (m : TermI) -> (a : LambdaType) -> Dec (ctx |= m :<: a)
 
 synthesize ctx (Var x) with (lookup ctx x)
   synthesize ctx (Var x) | (Yes (MkDPair fst snd)) = Yes (MkDPair fst (JudgeVar snd))
@@ -234,7 +232,7 @@ synthesize ctx (x :! y) with (inherit ctx x y)
   synthesize ctx (x :! y) | (Yes prf) = Yes (MkDPair y (JudgeAssert prf))
   synthesize ctx (x :! y) | (No contra) = No (\ (MkDPair y (JudgeAssert z)) => contra z)
 
-inherit ctx (Lam x y) (z ~> w) with (inherit (ctx :: (x,z)) y w)
+inherit ctx (Lam x y) (z ~> w) with (inherit (ctx :< (x,z)) y w)
   inherit ctx (Lam x y) (z ~> w) | (Yes prf) = Yes (JudgeLam prf)
   inherit ctx (Lam x y) (z ~> w) | (No contra) = No (\ (JudgeLam prf) => contra prf)
 inherit ctx Zero Nat = Yes JudgeZero
@@ -247,10 +245,10 @@ inherit ctx (Case x y z w) a with (synthesize ctx x)
   inherit ctx (Case x y z w) a | (Yes (MkDPair (v * s) snd)) = No (\ (JudgeCase x' y' w') => nNeqPair (uniqSyn x' snd))
   inherit ctx (Case x y z w) a | (Yes (MkDPair Nat snd)) with (inherit ctx y a)
     inherit ctx (Case x y z w) a | (Yes (MkDPair Nat snd)) | (No contra) = No (\ (JudgeCase x' y' w') => contra y')
-    inherit ctx (Case x y z w) a | (Yes (MkDPair Nat snd)) | (Yes prf) with (inherit (ctx :: (z, Nat)) w a)
+    inherit ctx (Case x y z w) a | (Yes (MkDPair Nat snd)) | (Yes prf) with (inherit (ctx :< (z, Nat)) w a)
       inherit ctx (Case x y z w) a | (Yes (MkDPair Nat snd)) | (Yes prf) | (No contra) = No (\ (JudgeCase x' y' w') => contra w')
       inherit ctx (Case x y z w) a | (Yes (MkDPair Nat snd)) | (Yes prf) | (Yes v) = Yes (JudgeCase snd prf v)
-inherit ctx (Mu x y) a with (inherit (ctx :: (x, a)) y a)
+inherit ctx (Mu x y) a with (inherit (ctx :< (x, a)) y a)
   inherit ctx (Mu x y) a | (No contra) = No (\ (JudgeMu x) => contra x)
   inherit ctx (Mu x y) a | (Yes prf) = Yes (JudgeMu prf)
 inherit ctx (Proj1 x) a with (synthesize ctx x)
@@ -271,7 +269,7 @@ inherit ctx (CaseP x y z w) a with (synthesize ctx x)
   inherit ctx (CaseP x y z w) a | (No contra) = No (\ (JudgeCaseP x' w') => contra (MkDPair _ x'))
   inherit ctx (CaseP x y z w) a | (Yes (MkDPair (v ~> s) snd)) = No (\ (JudgeCaseP x' w') => pairNeqArr (uniqSyn x' snd))
   inherit ctx (CaseP x y z w) a | (Yes (MkDPair Nat snd)) = No (\ (JudgeCaseP x' w') => nNeqPair (uniqSyn snd x'))
-  inherit ctx (CaseP x y z w) a | (Yes (MkDPair (v * s) snd)) with (inherit (ctx :: (y,v) :: (z,s)) w a)
+  inherit ctx (CaseP x y z w) a | (Yes (MkDPair (v * s) snd)) with (inherit (ctx :< (y,v) :< (z,s)) w a)
     inherit ctx (CaseP x y z w) a | (Yes (MkDPair (v * s) snd)) | (Yes prf) = Yes (JudgeCaseP snd prf)
     inherit ctx (CaseP x y z w) a | (Yes (MkDPair (v * s) snd)) | (No contra) = No (\ (JudgeCaseP x' w') => case (uniqSyn x' snd) of { Refl => contra w' })
 inherit ctx (Infer x) a with (synthesize ctx x)
@@ -286,7 +284,7 @@ inherit ctx Zero      (x * y)  = No (\ x => case x of {})
 inherit ctx (Suc x)   (y ~> z) = No (\ x => case x of {})
 inherit ctx (Suc x)   (y * z)  = No (\ x => case x of {})
 
-judgeTwoPlusTwo : Empty |- Inference.twoPlusTwo ::: Nat
+judgeTwoPlusTwo : Empty |- Inference.twoPlusTwo :<: Nat
 judgeTwoPlusTwo =
   JudgeApp
     (JudgeApp
@@ -295,10 +293,10 @@ judgeTwoPlusTwo =
           (JudgeLam (JudgeLam (JudgeCase (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeVar Z) Refl) (JudgeSuc (JudgeInfer (JudgeApp (JudgeApp (JudgeVar (S (\x => case x of {}) (S (\x => case x of {}) (S (\x => case x of {}) Z)))) (JudgeInfer (JudgeVar Z) Refl)) (JudgeInfer (JudgeVar (S (\x => case x of {}) Z)) Refl)) Refl))))))) (JudgeSuc (JudgeSuc JudgeZero))) (JudgeSuc (JudgeSuc JudgeZero))
 
 
-judgeTwoPlusTwoCh : {a : LambdaType} -> Empty |- Inference.twoPlusTwoCh' {a} ::: Ch a
+judgeTwoPlusTwoCh : {a : LambdaType} -> Empty |- Inference.twoPlusTwoCh' {a} :<: Ch a
 judgeTwoPlusTwoCh = JudgeApp (JudgeApp (JudgeAssert (JudgeLam (JudgeLam (JudgeLam (JudgeLam (JudgeInfer (JudgeApp (JudgeApp (JudgeVar (S (\x => case x of {}) (S (\x => case x of {}) (S (\x => case x of {}) Z)))) (JudgeInfer (JudgeVar (S (\x => case x of {}) Z)) Refl)) (JudgeInfer (JudgeApp (JudgeApp (JudgeVar (S (\x => case x of {}) (S (\x => case x of {}) Z))) (JudgeInfer (JudgeVar (S (\x => case x of {}) Z)) Refl)) (JudgeInfer (JudgeVar Z) Refl)) Refl)) Refl)))))) (JudgeLam (JudgeLam (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeVar Z) Refl)) Refl)) Refl)))) (JudgeLam (JudgeLam (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeVar Z) Refl)) Refl)) Refl)))
 
-judgeTwoPlusTwoCh' : Empty |- (Inference.twoPlusTwoCh `App` Inference.suc `App` Zero) ::: Nat
+judgeTwoPlusTwoCh' : Empty |- (Inference.twoPlusTwoCh `App` Inference.suc `App` Zero) :<: Nat
 judgeTwoPlusTwoCh' = JudgeApp (JudgeApp (JudgeApp (JudgeApp (JudgeAssert (JudgeLam (JudgeLam (JudgeLam (JudgeLam (JudgeInfer (JudgeApp (JudgeApp (JudgeVar (S (\x => case x of {}) (S (\x => case x of {}) (S (\x => case x of {}) Z)))) (JudgeInfer (JudgeVar (S (\x => case x of {}) Z)) Refl)) (JudgeInfer (JudgeApp (JudgeApp (JudgeVar (S (\x => case x of {}) (S (\x => case x of {}) Z))) (JudgeInfer (JudgeVar (S (\x => case x of {}) Z)) Refl)) (JudgeInfer (JudgeVar Z) Refl)) Refl)) Refl)))))) (JudgeLam (JudgeLam (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeVar Z) Refl)) Refl)) Refl)))) (JudgeLam (JudgeLam (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeApp (JudgeVar (S (\x => case x of {}) Z)) (JudgeInfer (JudgeVar Z) Refl)) Refl)) Refl)))) (JudgeLam (JudgeSuc (JudgeInfer (JudgeVar Z) Refl)))) JudgeZero
 
 synthTwoPlusTwoCh : {auto ext : Extensionality} -> synthesize Empty (Inference.twoPlusTwoCh `App` Inference.suc `App` Zero) = Yes (MkDPair MoreMul.Nat Inference.judgeTwoPlusTwoCh')
@@ -348,14 +346,14 @@ test11 = MkIsNo
 
 eraseCtx : Inference.Context -> MoreMul.Context
 eraseCtx Empty = Empty
-eraseCtx (x :: (_, z)) = eraseCtx x :: z
+eraseCtx (x :< (_, z)) = eraseCtx x :< z
 
 eraseLookup : ctx `Inference.Has` (x,a) -> eraseCtx ctx `Has` a
 eraseLookup Z = Z
 eraseLookup (S f y) = S (eraseLookup y)
 
-eraseTypeS : ctx |- m ::: a -> eraseCtx ctx |- a
-eraseTypeI : ctx |= m ::: a -> eraseCtx ctx |- a
+eraseTypeS : ctx |- m :<: a -> eraseCtx ctx |- a
+eraseTypeI : ctx |= m :<: a -> eraseCtx ctx |- a
 
 eraseTypeS (JudgeVar x) = Var (eraseLookup x)
 eraseTypeS (JudgeApp x y) = App (eraseTypeS x) (eraseTypeI y)

@@ -20,11 +20,11 @@ public export
 ids : Subst ctx ctx
 ids x = Var x
 
-shift : {a : LambdaType} -> Subst ctx (ctx :: a)
+shift : {a : LambdaType} -> Subst ctx (ctx :< a)
 shift {a} x = Var (S x)
 
 public export
-cons : ctx' |- b -> Subst ctx ctx' -> Subst (ctx :: b) ctx'
+cons : ctx' |- b -> Subst ctx ctx' -> Subst (ctx :< b) ctx'
 cons {a = a} x f Z = x
 cons {a = a} x f (S y) = f y
 
@@ -239,27 +239,24 @@ composeRename {m = (Lam x)} = cong Lam . Calc $
 
 commuteSubstRename
    : FunExt
-  => {m : _ |- Star} -> {sigma : Subst _ _}
-  -> {rho : {ctx : _} -> Rename ctx (ctx :: Star)}
-  -> ({x : _ `Has` Star} -> exts sigma (rho x) = rename rho (sigma x))
-  -> subst (exts sigma) (rename rho m) = rename rho (subst sigma m)
+  => {m : ctx |- Star} -> {sigma : Subst ctxa ctx'} -> {sigma' : Subst ctx ctxb}
+  -> {rho : Rename ctx ctxa} -> {rho' : Rename ctxb ctx'}
+  -> ({x : ctx `Has` Star} -> sigma (rho x) = rename rho' (sigma' x))
+  -> subst sigma (rename rho m) = rename rho' (subst sigma' m)
 commuteSubstRename {m = (Var x)} f = f
 commuteSubstRename {m = (x `App` y)} f
-  = cong2 App (commuteSubstRename {rho = rho} f) (commuteSubstRename {rho = rho} f)
-commuteSubstRename {m = (Lam x)} f = cong Lam (commuteSubstRename {rho = rho'} h)
+  = cong2 App (commuteSubstRename f) (commuteSubstRename f)
+commuteSubstRename {m = (Lam x)} f = cong Lam (commuteSubstRename {sigma = exts sigma} {rho = ext rho} h)
   where
-    rho' : {ctx : _} -> Rename ctx (ctx :: Star)
-    rho' {ctx = Empty} = \ x => case x of {}
-    rho' {ctx = (y :: Star)} = ext rho
 
-    h : {x : _ :: Star `Has` Star} -> exts (exts sigma) (ext rho x) = rename (ext rho) (exts sigma x)
+    h : {x : ctx :< Star `Has` Star} -> exts sigma (ext rho x) = rename (ext rho') (exts sigma' x)
     h {x = Z} = Refl
     h {x = S y} = Calc $
-      |~ rename S (exts sigma (rho y))
-      ~~ rename S (rename rho (sigma y)) ...(cong (rename S) f)
-      ~~ rename (S . rho) (sigma y) ...(composeRename)
-      ~~ rename (ext rho . S) (sigma y) ...(congRename Refl)
-      ~~ rename (ext rho) (rename S (sigma y)) ...(sym composeRename)
+      |~ rename S (sigma (rho y))
+      ~~ rename S (rename rho' (sigma' y)) ...(cong (rename S) f)
+      ~~ rename (S . rho') (sigma' y) ...(composeRename)
+      ~~ rename (ext rho' . S) (sigma' y) ...(congRename Refl)
+      ~~ rename (ext rho') (rename S (sigma' y)) ...(sym composeRename)
 
 extsSeq
    : FunExt
@@ -267,7 +264,7 @@ extsSeq
   -> {sigma2 : Subst delta _}
   -> {a : LambdaType} -> (exts sigma1 `seq` exts sigma2) {a} = exts (sigma1 `seq` sigma2)
 extsSeq = funExt lemma
-   where lemma : {a : _} -> (v : _ :: b `Has` a) -> (exts sigma1 `seq` exts sigma2) v = exts (sigma1 `seq` sigma2) v
+   where lemma : {a : _} -> (v : _ :< b `Has` a) -> (exts sigma1 `seq` exts sigma2) v = exts (sigma1 `seq` sigma2) v
          lemma Z = Refl
          lemma {a = Star} {b = Star} (S x) = commuteSubstRename {rho = S} Refl
 
@@ -314,7 +311,7 @@ substZeroExtsCons = Calc $
 
 public export
 substCommute : FunExt
-            => {n : ctx :: Star |- Star} -> {m : ctx |- Star} -> {sigma : Subst ctx ctx'}
+            => {n : ctx :< Star |- Star} -> {m : ctx |- Star} -> {sigma : Subst ctx ctx'}
             -> replace (subst (exts sigma) n) (subst sigma m) = subst sigma (replace n m)
 substCommute = Calc $
   |~ replace (subst (exts sigma) n) (subst sigma m)
@@ -334,7 +331,7 @@ substCommute = Calc $
 
 public export
 renameSubstCommute : FunExt
-            => {n : ctx :: Star |- Star} -> {m : ctx |- Star} -> {rho : Rename ctx ctx'}
+            => {n : ctx :< Star |- Star} -> {m : ctx |- Star} -> {rho : Rename ctx ctx'}
             -> replace (rename (ext rho) n) (rename rho m) = rename rho (replace n m)
 renameSubstCommute = Calc $
   |~ replace (rename (ext rho) n) (rename rho m)
@@ -343,12 +340,12 @@ renameSubstCommute = Calc $
   ~~ subst (ren rho) (replace n m) ...(substCommute)
   ~~ rename rho (replace n m) ...(sym renameSubstRen)
 
-replaceSkip : {a,b,c : _} -> (m : (ctx :: a) :: b |- c) -> (n : ctx |- a) -> ctx :: b |- c
+replaceSkip : {a,b,c : _} -> (m : (ctx :< a) :< b |- c) -> (n : ctx |- a) -> ctx :< b |- c
 replaceSkip m n = subst (exts (substZero n)) m
 
 public export
 substitution : FunExt
-            => {m : (ctx :: Star) :: Star |- Star} -> {n : ctx :: Star |- Star} -> {l : ctx |- Star}
+            => {m : ctx :< Star :< Star |- Star} -> {n : ctx :< Star |- Star} -> {l : ctx |- Star}
             -> replace (replace m n) l = replace (replaceSkip m l) (replace n l)
 substitution = sym substCommute
 

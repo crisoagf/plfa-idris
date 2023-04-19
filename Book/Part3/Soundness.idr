@@ -11,7 +11,7 @@ import Control.Function.FunExt
 
 substExt : {v : _} -> {env : Env ctx} -> {env' : Env ctx'} -> (sub : Subst ctx ctx')
   -> env' |- (sub, env)
-  -> (env' :: v) |- (exts sub, env :: v)
+  -> (env' :< v) |- (exts sub, env :< v)
 substExt sub d Z = Var
 substExt sub d (S x) = renamePres S (\ _ => reflI) (d x)
 
@@ -27,13 +27,13 @@ substPres sub s BotIntro = BotIntro
 substPres sub s (UIntro x y) = UIntro (substPres sub s x) (substPres sub s y)
 substPres sub s (Sub x y) = Sub (substPres sub s x) y
 
-substitution : {v, w : _} -> {env : Env ctx} -> {m : _} -> {n : ctx :: Star |- Star}
-  -> (env :: v) |- (n, w)
+substitution : {v, w : _} -> {env : Env ctx} -> {m : _} -> {n : ctx :< Star |- Star}
+  -> (env :< v) |- (n, w)
   -> env |- (m, v)
   -> env |- (replace n m, w)
 substitution {m} {v} x y = substPres (substZero m) subZOk x
   where
-    subZOk : env |- (substZero m, env :: v)
+    subZOk : env |- (substZero m, env :< v)
     subZOk Z = y
     subZOk (S x) = Var
 
@@ -54,7 +54,7 @@ preserve (Sub x z) y = Sub (preserve x y) z
 extLt : {v : _} -> {env : Env ctx} -> {env' : Env ctx'}
   -> (rho : Rename ctx ctx')
   -> (env' . rho) :<<=: env
-  -> ((env' :: v) . ext rho) :<<=: (env :: v)
+  -> ((env' :< v) . ext rho) :<<=: (env :< v)
 extLt rho f Z = reflI
 extLt rho f (S x) = f x
 
@@ -75,7 +75,7 @@ renameReflect {m = (y `App` z)} alln (UIntro x w) = UIntro (renameReflect alln x
 renameReflect {m = (y `App` z)} alln (Sub x w) = Sub (renameReflect alln x) w
 
 renameIncReflect : {v',v : _} -> {env : Env ctx} -> {m : _}
-  -> (env :: v') |- (rename S m, v)
+  -> (env :< v') |- (rename S m, v)
   -> env |- (m, v)
 renameIncReflect x = renameReflect reflI' x
 
@@ -126,12 +126,12 @@ substU : {env' : Env ctx'} -> {env1, env2 : Env ctx} -> {sigma : Subst ctx ctx'}
   -> env' |- (sigma, env1 `uEnv` env2)
 substU f g x = UIntro (f x) (g x)
 
-lambdaInj : {m, n : ctx :: Star |- Star} -> Lam m = Lam n -> m = n
+lambdaInj : {m, n : ctx :< Star |- Star} -> Lam m = Lam n -> m = n
 lambdaInj Refl = Refl
 
-split : FunExt => {m : ctx :: Star |- Star} -> {env' : Env (ctx :: Star)} -> {v : _}
+split : FunExt => {m : ctx :< Star |- Star} -> {env' : Env (ctx :< Star)} -> {v : _}
   -> env' |- (m, v)
-  -> (init env' :: last env') |- (m, v)
+  -> (init env' :< last env') |- (m, v)
 split x = rewrite sym (initLast env') in x
 
 substReflect : FunExt => {env' : Env ctx'} -> {m : ctx |- Star} -> {v : _}
@@ -158,18 +158,18 @@ substReflect {m = m} (UIntro x y) prf with (substReflect x prf, substReflect y p
 substReflect {m = m} (Sub x y) prf with (substReflect x prf)
   substReflect {m = m} (Sub x y) prf | (env ** (s, m')) = (env ** (s, Sub m' y))
 
-substZeroReflect : {env : Env ctx} -> {env' : Env (ctx :: Star)} -> {m : ctx |- Star}
+substZeroReflect : {env : Env ctx} -> {env' : Env (ctx :< Star)} -> {m : ctx |- Star}
   -> env |- (substZero m, env')
-  -> (env' :<<=: (env :: last env'), env |- (m, last env'))
+  -> (env' :<<=: (env :< last env'), env |- (m, last env'))
 substZeroReflect f = (lemma, f Z)
   where
-    lemma : env' :<<=: (env :: last env')
+    lemma : env' :<<=: (env :< last env')
     lemma Z = reflI
     lemma (S x) = varInv (f (S x))
 
-substitutionReflect : FunExt => {env : Env ctx} -> {n : ctx :: Star |- Star} -> {m : ctx |- Star} -> {v : _}
+substitutionReflect : FunExt => {env : Env ctx} -> {n : ctx :< Star |- Star} -> {m : ctx |- Star} -> {v : _}
   -> env |- (replace n m, v)
-  -> (w : Value ** (env |- (m, w), (env :: w) |- (n, v)))
+  -> (w : Value ** (env |- (m, w), (env :< w) |- (n, v)))
 substitutionReflect x with (substReflect x Refl)
   substitutionReflect x | (env' ** (envsigmaenv', env'v)) with (substZeroReflect envsigmaenv')
     substitutionReflect x | (env' ** (envsigmaenv', env'v)) | (lt, envmlastenv')

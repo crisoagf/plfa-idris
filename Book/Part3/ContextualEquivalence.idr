@@ -9,7 +9,7 @@ import Book.Part3.Adequacy
 import Control.Function.FunExt
 
 terminates : {ctx : _} -> (m : ctx |- Star) -> Type
-terminates {ctx} m = (n : (ctx :: Star |- Star) ** m -=>> Lam n)
+terminates {ctx} m = (n : (ctx :< Star |- Star) ** m -=>> Lam n)
 
 (==) : {ctx : _} -> (m, n : ctx |- Star) -> Type
 (==) {ctx} m n = {c : Ctx ctx Empty} -> terminates (plug c m) `iff` terminates (plug c n)

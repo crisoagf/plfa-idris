@@ -56,7 +56,7 @@ V v (MkClos (Var y) env) = Void
 V v (MkClos (y `App` z) env) = Void
 V Bot (MkClos (Lam y) env) = ()
 V (v |~> w) (MkClos (Lam n) env) = {c : Clos} -> E v c -> aboveFun w
-  -> (c' : Clos ** (env :: c |- (n, c'), V w c'))
+  -> (c' : Clos ** (env :< c |- (n, c'), V w c'))
 V (u `U` v) (MkClos (Lam n) env) = (V u (MkClos (Lam n) env), V v (MkClos (Lam n) env))
 
 E v (MkClos m ctx') = (_ : aboveFun v) -> (c : Clos ** (ctx' |- (m, c), V v c))
@@ -68,12 +68,12 @@ GEmpty : G {ctx = Empty} Empty Empty
 GEmpty impossible
 
 GExt : {ctx : _} -> {env : Env ctx} -> {env' : ClosEnv ctx} -> {v : _} -> {c : _}
-    -> G env env' -> E v c -> G (env :: v) (env' :: c)
+    -> G env env' -> E v c -> G (env :< v) (env' :< c)
 GExt g e {x = Z} = e
 GExt g e {x = (S x)} = g
 
 data WHNF : {ctx : _} -> {a : LambdaType} -> ctx |- a -> Type where
-  IsLam : {ctx : _} -> {n : ctx :: Star |- Star} -> WHNF (Lam n)
+  IsLam : {ctx : _} -> {n : ctx :< Star |- Star} -> WHNF (Lam n)
 
 VWHNF : {ctx : _} -> {env : ClosEnv ctx} -> {m : ctx |- Star} -> {v : _}
   -> V v (MkClos m env) -> WHNF m
@@ -86,7 +86,7 @@ VUIntro {c = (MkClos (Var z) f)} _ _ impossible
 VUIntro {c = (MkClos (z `App` w) f)} _ _ impossible
 VUIntro {c = (MkClos (Lam z) f)} uc vc = (uc, vc)
 
-notAboveFunV : {v : _} -> {ctx : _} -> {env' : ClosEnv ctx} -> {n : ctx :: Star |- Star}
+notAboveFunV : {v : _} -> {ctx : _} -> {env' : ClosEnv ctx} -> {n : ctx :< Star |- Star}
             -> Not (aboveFun v)
             -> V v (MkClos (Lam n) env')
 notAboveFunV {v = Bot} af = ()
@@ -96,14 +96,14 @@ notAboveFunV {v = (v1 `U` v2)} af = (notAboveFunV (af . aboveFunInj1), notAboveF
 subV : {c : _} -> {v, v' : _} -> V v c -> v' :<=: v -> V v' c
 subE : {c : _} -> {v, v' : _} -> E v c -> v' :<=: v -> E v' c
 subVLemma
-   : {z : (ctx :: Star) |- Star}
+   : {z : (ctx :< Star) |- Star}
   -> {f : (Has ctx Star -> Clos)}
   -> (w1 : Value)
   -> (w2 : Value)
   -> (v : Value)
   -> (vc : (V (v |~> w1) (MkClos (Lam z) f), V (v |~> w2) (MkClos (Lam z) f)))
   -> {c : Clos}
-  -> E v c -> aboveFun (w1 `U` w2) -> (c' : Clos ** ((f :: c) |- (z, c'), V (w1 `U` w2) c'))
+  -> E v c -> aboveFun (w1 `U` w2) -> (c' : Clos ** ((f :< c) |- (z, c'), V (w1 `U` w2) c'))
 subVLemma w1 w2 v (vcw1, vcw2) ev sf with (aboveFunDec w1, aboveFunDec w2)
   subVLemma w1 w2 v (vcw1, vcw2) ev sf | (Yes af1, Yes af2) with (vcw1 ev af1, vcw2 ev af2)
     subVLemma w1 w2 v (vcw1, vcw2) ev sf | (Yes af1, Yes af2) | ((MkClos m delta ** (mc2, vw1)), (_ ** (mc3, vw2))) with (bigStepDet mc3 mc2)
@@ -170,26 +170,26 @@ judgeE gEnvClosEnv (Sub {v = w} x y) fEnvX with (judgeE gEnvClosEnv x (aboveFunL
   judgeE gEnvClosEnv (Sub {v = w} x y) fEnvX | (c ** (mc, vw)) = (c ** (mc, subV vw y))
 
 public export
-denoteImpliesJudge : {m : Empty |- Star} -> {n : Empty :: Star |- Star} -> Denote m == Denote (Lam n)
-  -> (ctx : _ ** n' : (ctx :: Star |- Star) ** closEnv : ClosEnv ctx ** (Empty |- (m, MkClos (Lam n') closEnv)))
+denoteImpliesJudge : {m : Empty |- Star} -> {n : Empty :< Star |- Star} -> Denote m == Denote (Lam n)
+  -> (ctx : _ ** n' : (ctx :< Star |- Star) ** closEnv : ClosEnv ctx ** (Empty |- (m, MkClos (Lam n') closEnv)))
 denoteImpliesJudge eq with (judgeE GEmpty ((snd (eq Empty (Bot |~> Bot))) (FunIntro BotIntro)) (Bot ** Bot ** reflexive))
   denoteImpliesJudge eq | (MkClos {ctx} l f ** (lc, vv)) with (VWHNF vv)
     denoteImpliesJudge eq | (MkClos {ctx} (Lam l) f ** (lc, vv)) | IsLam = (ctx ** l ** f ** lc)
 
-adequacy : FunExt => {m : Empty |- Star} -> {n : Empty :: Star |- Star}
+adequacy : FunExt => {m : Empty |- Star} -> {n : Empty :< Star |- Star}
         -> Denote m == Denote (Lam n)
-        -> (n' : Empty :: Star |- Star ** m -=>> Lam n')
+        -> (n' : Empty :< Star |- Star ** m -=>> Lam n')
 adequacy eq with (denoteImpliesJudge eq)
   adequacy eq | (ctx ** n' ** closEnv ** mJudgment) = cbnReduce mJudgment
 
-reduceCbn : FunExt => {m : Empty |- Star} -> {n : Empty :: Star |- Star}
+reduceCbn : FunExt => {m : Empty |- Star} -> {n : Empty :< Star |- Star}
           -> m -=>> Lam n
-          -> (ctx : _ ** n' : ctx :: Star |- Star ** closEnv : ClosEnv ctx ** Empty |- (m, MkClos (Lam n') closEnv))
+          -> (ctx : _ ** n' : ctx :< Star |- Star ** closEnv : ClosEnv ctx ** Empty |- (m, MkClos (Lam n') closEnv))
 reduceCbn mToLamN = denoteImpliesJudge (soundness mToLamN)
 
 cbnIffReduce : FunExt => {m : Empty |- Star}
-         -> (n : Empty :: Star |- Star ** m -=>> Lam n)
+         -> (n : Empty :< Star |- Star ** m -=>> Lam n)
             `iff`
-            (ctx : _ ** n' : ctx :: Star |- Star ** closEnv : ClosEnv ctx ** Empty |- (m, MkClos (Lam n') closEnv))
+            (ctx : _ ** n' : ctx :< Star |- Star ** closEnv : ClosEnv ctx ** Empty |- (m, MkClos (Lam n') closEnv))
 cbnIffReduce = ( \ x => reduceCbn (snd x), \ x => cbnReduce (snd (snd (snd x))) )
 
